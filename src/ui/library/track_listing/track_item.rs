@@ -272,7 +272,7 @@ impl Render for TrackItem {
                                         )
                                     })
                                     .when_some(current_track, |this, track| {
-                                        this.bg(if track == self.track.location {
+                                        this.bg(if track.get_path() == Some(&self.track.location) {
                                             theme.list_item_current
                                         } else if self.index % 2 == 1 {
                                             theme.list_item_alternate

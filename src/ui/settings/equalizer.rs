@@ -42,7 +42,7 @@ impl Render for EqualizerSettings {
             .flex()
             .flex_col()
             .child(
-                section_header(tr!("EQUALIZER"))
+                section_header(tr!("EQUALIZER", "Equalizer"))
                     .p(px(16.0))
                     .subtitle(tr!(
                         "EQ_GRAPH_HINT",

@@ -75,6 +75,78 @@ impl Lyrics {
                     y: px(0.0),
                 });
                 cx.notify();
+
+                #[cfg(feature = "libre-services")]
+                if this.content.is_none()
+                    && let Some(current) = track
+                    && let crate::providers::PlaybackSource::Subsonic(sub_track) = current.source()
+                {
+                    let server_id = sub_track.server_id.clone();
+                    let song_id = sub_track.id.clone();
+                    let artist = sub_track.artist.clone();
+                    let title = sub_track.title.clone();
+                    let this_entity = cx.entity().clone();
+
+                    cx.spawn(async move |_, cx| {
+                        let client = crate::providers::opensubsonic::client_for(&server_id);
+                        let lyrics_str = match client {
+                            Some(ref client) => {
+                                match client.get_lyrics_by_song_id(&song_id).await {
+                                    Ok(list) if !list.is_empty() => {
+                                        let structured = &list[0];
+                                        if structured.synced == Some(true) {
+                                            let mut lrc = String::new();
+                                            for line in &structured.line {
+                                                if let (Some(start_ms), Some(val)) =
+                                                    (line.start, &line.value)
+                                                {
+                                                    let mins = start_ms / 60_000;
+                                                    let secs = (start_ms % 60_000) / 1000;
+                                                    let centis = (start_ms % 1000) / 10;
+                                                    lrc.push_str(&format!(
+                                                        "[{:02}:{:02}.{:02}]{}\n",
+                                                        mins, secs, centis, val
+                                                    ));
+                                                }
+                                            }
+                                            Some(lrc)
+                                        } else {
+                                            let mut text = String::new();
+                                            for line in &structured.line {
+                                                if let Some(val) = &line.value {
+                                                    text.push_str(val);
+                                                    text.push('\n');
+                                                }
+                                            }
+                                            Some(text)
+                                        }
+                                    }
+                                    _ => {
+                                        if let (Some(a), t) = (&artist, &title) {
+                                            client.get_lyrics(a, t).await.unwrap_or(None)
+                                        } else {
+                                            None
+                                        }
+                                    }
+                                }
+                            }
+                            None => None,
+                        };
+
+                        if let Some(lrc_content) = lyrics_str {
+                            let parsed = parse_lrc(&lrc_content);
+                            let count = parsed.as_ref().map_or(0, Vec::len);
+                            this_entity.update(cx, |this, cx| {
+                                this.content = Some(lrc_content);
+                                this.parsed = parsed;
+                                this.line_emphasis_start_values = vec![0.0; count];
+                                this.line_emphasis_target_values = vec![0.0; count];
+                                cx.notify();
+                            });
+                        }
+                    })
+                    .detach();
+                }
             })
             .detach();
 

@@ -116,7 +116,7 @@ impl Render for ServicesSettings {
             .flex()
             .flex_col()
             .gap(px(12.0))
-            .child(section_header(tr!("SERVICES")));
+            .child(section_header(tr!("SERVICES", "Services")));
 
         #[cfg(feature = "proprietary-services")]
         if lastfm::is_available() {

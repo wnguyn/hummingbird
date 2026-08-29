@@ -6,9 +6,9 @@ pub mod lastfm;
 mod library;
 #[cfg(feature = "libre-services")]
 pub mod listenbrainz;
+mod playback;
 #[cfg(feature = "libre-services")]
 mod remote_servers;
-mod playback;
 mod services;
 #[cfg(feature = "update")]
 mod update;
@@ -25,7 +25,7 @@ use crate::{
     settings::{SettingsGlobal, storage::DEFAULT_SIDEBAR_WIDTH},
     ui::{
         components::{
-            icons::{ACCESS_POINT, ADJUSTMENTS, BOOKS, PLAY, WORLD, WORLD_CHECK},
+            icons::{ACCESS_POINT, ADJUSTMENTS, BOOKS, PLAY, WORLD},
             scrollbar::{ScrollableHandle, floating_scrollbar},
             sidebar::{sidebar, sidebar_item},
             window_chrome::window_chrome,
@@ -34,12 +34,13 @@ use crate::{
         settings::{
             equalizer::EqualizerSettings, interface::InterfaceSettings, library::LibrarySettings,
             playback::PlaybackSettings, services::ServicesSettings,
-            #[cfg(feature = "libre-services")]
-            remote_servers::RemoteServersSettings,
         },
         theme::Theme,
     },
 };
+
+#[cfg(feature = "libre-services")]
+use crate::ui::settings::remote_servers::RemoteServersSettings;
 
 #[cfg(feature = "update")]
 use crate::ui::settings::update::UpdateSettings;
@@ -97,7 +98,7 @@ fn open_or_focus_settings_window(cx: &mut App, section: Option<SettingsSectionKi
             ..Default::default()
         },
         move |window, cx| {
-            window.set_window_title(tr!("SETTINGS").to_string().as_str());
+            window.set_window_title(tr!("SETTINGS", "Settings").to_string().as_str());
             SettingsWindow::new(section, cx)
         },
     )
@@ -159,7 +160,7 @@ impl SettingsSectionKind {
             Self::Equalizer => ADJUSTMENTS,
             Self::Services => ACCESS_POINT,
             #[cfg(feature = "libre-services")]
-            Self::RemoteServers => WORLD_CHECK,
+            Self::RemoteServers => crate::ui::components::icons::WORLD_CHECK,
             #[cfg(feature = "update")]
             Self::Update => super::components::icons::UPDATE,
         }
@@ -207,7 +208,9 @@ impl SettingsSection {
             SettingsSectionKind::Equalizer => Self::Equalizer(EqualizerSettings::new(cx)),
             SettingsSectionKind::Services => Self::Services(ServicesSettings::new(cx)),
             #[cfg(feature = "libre-services")]
-            SettingsSectionKind::RemoteServers => Self::RemoteServers(RemoteServersSettings::new(cx)),
+            SettingsSectionKind::RemoteServers => {
+                Self::RemoteServers(RemoteServersSettings::new(cx))
+            }
             #[cfg(feature = "update")]
             SettingsSectionKind::Update => Self::Update(UpdateSettings::new(cx)),
         }

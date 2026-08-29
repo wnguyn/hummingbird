@@ -26,11 +26,12 @@ pub enum PlaybackSource {
     /// A track backed by a file on disk (the original local library).
     Local(PathBuf),
     /// A track streamed from an OpenSubsonic-compatible server.
-    Subsonic(SubsonicTrackRef),
+    Subsonic(Box<SubsonicTrackRef>),
 }
 
 impl PlaybackSource {
     /// Whether this source is a local file.
+    #[allow(dead_code)]
     pub fn is_local(&self) -> bool {
         matches!(self, Self::Local(_))
     }
@@ -46,7 +47,7 @@ impl PlaybackSource {
     /// The remote track reference, if this is a Subsonic source.
     pub fn as_subsonic(&self) -> Option<&SubsonicTrackRef> {
         match self {
-            Self::Subsonic(track) => Some(track),
+            Self::Subsonic(track) => Some(track.as_ref()),
             Self::Local(_) => None,
         }
     }
@@ -103,6 +104,7 @@ pub struct SubsonicTrackRef {
     pub disc_number: Option<i64>,
 }
 
+#[allow(dead_code)]
 impl SubsonicTrackRef {
     /// Display name of the track, falling back to the server track ID.
     pub fn display_title(&self) -> &str {
@@ -136,7 +138,8 @@ pub async fn fetch_cover_art(
     cover_art: &str,
     size: Option<u32>,
 ) -> Result<Vec<u8>, String> {
-    let client = opensubsonic::client_for(server_id).ok_or_else(|| "server not connected".to_string())?;
+    let client =
+        opensubsonic::client_for(server_id).ok_or_else(|| "server not connected".to_string())?;
     client
         .fetch_cover_art(cover_art, size)
         .await

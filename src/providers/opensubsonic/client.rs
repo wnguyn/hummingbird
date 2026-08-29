@@ -57,10 +57,8 @@ pub fn normalize_base_url(input: &str) -> Result<url::Url, SubsonicError> {
         _ => return Err(SubsonicError::InvalidResponse),
     }
 
-    let path = url.path().to_string();
-    if !path.ends_with('/') {
-        url.set_path(&format!("{path}/"));
-    }
+    let path = url.path().trim_end_matches('/');
+    url.set_path(&format!("{path}/"));
 
     // Drop any query/fragment a user may have pasted in.
     url.set_query(None);
@@ -97,10 +95,12 @@ impl OpenSubsonicClient {
         })
     }
 
+    #[allow(dead_code)]
     pub fn base_url(&self) -> &url::Url {
         &self.base_url
     }
 
+    #[allow(dead_code)]
     pub fn client(&self) -> &zed_reqwest::Client {
         &self.client
     }

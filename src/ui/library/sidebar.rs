@@ -19,7 +19,7 @@ use crate::{
     library::{db::LibraryAccess, types::TrackStats},
     ui::{
         components::{
-            icons::{DISC, SEARCH, USERS, WORLD_CHECK},
+            icons::{DISC, SEARCH, USERS},
             nav_button::nav_button,
             resizable::{ResizeEdge, resizable},
             sidebar::{sidebar, sidebar_item, sidebar_separator},
@@ -112,9 +112,9 @@ impl Render for Sidebar {
                     sidebar_item("search")
                         .icon(SEARCH)
                         .secondary_background()
-                        .when(!collapsed, |this| this.child(tr!("SEARCH")))
+                        .when(!collapsed, |this| this.child(tr!("SEARCH", "Search")))
                         .when(collapsed, |this| {
-                            this.collapsed().collapsed_label(tr!("SEARCH"))
+                            this.collapsed().collapsed_label(tr!("SEARCH", "Search"))
                         })
                         .on_click(|_, window, cx| {
                             window.dispatch_action(Box::new(Search), cx);
@@ -134,9 +134,11 @@ impl Render for Sidebar {
                     let server_id = server.id.clone();
                     let name = server.name.clone();
                     sidebar_item(format!("server-{server_id}"))
-                        .icon(WORLD_CHECK)
+                        .icon(crate::ui::components::icons::WORLD_CHECK)
                         .when(!collapsed, |this| this.child(name.clone()))
-                        .when(collapsed, |this| this.collapsed().collapsed_label(name.clone()))
+                        .when(collapsed, |this| {
+                            this.collapsed().collapsed_label(name.clone())
+                        })
                         .when(
                             matches!(
                                 &sidebar_view,
@@ -179,7 +181,7 @@ impl Render for Sidebar {
             .child(
                 sidebar_item("albums")
                     .icon(DISC)
-                    .when(!collapsed, |this| this.child(tr!("ALBUMS", "Albums")))
+                    .when(!collapsed, |this| this.child(tr!("ALBUMS")))
                     .when(collapsed, |this| {
                         this.collapsed().collapsed_label(tr!("ALBUMS"))
                     })
@@ -199,7 +201,7 @@ impl Render for Sidebar {
             .child(
                 sidebar_item("artists")
                     .icon(USERS)
-                    .when(!collapsed, |this| this.child(tr!("ARTISTS", "Artists")))
+                    .when(!collapsed, |this| this.child(tr!("ARTISTS")))
                     .when(collapsed, |this| {
                         this.collapsed().collapsed_label(tr!("ARTISTS"))
                     })
@@ -219,7 +221,7 @@ impl Render for Sidebar {
             .child(
                 sidebar_item("tracks")
                     .icon(MUSIC)
-                    .when(!collapsed, |this| this.child(tr!("TRACKS", "Tracks")))
+                    .when(!collapsed, |this| this.child(tr!("TRACKS")))
                     .when(collapsed, |this| {
                         this.collapsed().collapsed_label(tr!("TRACKS"))
                     })
@@ -235,7 +237,7 @@ impl Render for Sidebar {
             .child(
                 sidebar_item("files")
                     .icon(FOLDER)
-                    .when(!collapsed, |this| this.child(tr!("FILES", "Files")))
+                    .when(!collapsed, |this| this.child(tr!("FILES")))
                     .when(collapsed, |this| {
                         this.collapsed().collapsed_label(tr!("FILES"))
                     })

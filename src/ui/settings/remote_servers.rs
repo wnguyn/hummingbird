@@ -5,11 +5,10 @@ use gpui::{
     App, AppContext, Context, Entity, IntoElement, ParentElement, Render, SharedString, Styled,
     Window, div, px,
 };
-use gpui::prelude::FluentBuilder;
 
 use crate::{
     providers::opensubsonic::{
-        self, ServerConfig, Secret, DEFAULT_API_VERSION, DEFAULT_CLIENT_NAME,
+        self, DEFAULT_API_VERSION, DEFAULT_CLIENT_NAME, Secret, ServerConfig,
     },
     settings::{Settings, SettingsGlobal, save_settings},
     ui::{
@@ -103,7 +102,10 @@ impl RemoteServersSettings {
     fn test_connection(&self, cx: &mut App) {
         let config = self.current_config(cx);
         if config.url.is_empty() || config.username.is_empty() {
-            self.set_status(cx, ConnectionStatus::Error(tr!("SERVERS_FIELDS_REQUIRED", "Server URL and username are required.").into()));
+            self.set_status(
+                cx,
+                ConnectionStatus::Error("Server URL and username are required.".into()),
+            );
             return;
         }
 
@@ -118,7 +120,9 @@ impl RemoteServersSettings {
 
             status.update(cx, |s, cx| {
                 *s = match result {
-                    Ok(()) => ConnectionStatus::Success(tr!("SERVERS_TEST_OK", "Connected successfully.").into()),
+                    Ok(()) => ConnectionStatus::Success(
+                        tr!("SERVERS_TEST_OK", "Connected successfully.").into(),
+                    ),
                     Err(e) => ConnectionStatus::Error(e.into()),
                 };
                 cx.notify();
@@ -131,7 +135,10 @@ impl RemoteServersSettings {
     fn save_server(&self, cx: &mut App) {
         let config = self.current_config(cx);
         if config.url.is_empty() || config.username.is_empty() {
-            self.set_status(cx, ConnectionStatus::Error(tr!("SERVERS_FIELDS_REQUIRED", "Server URL and username are required.").into()));
+            self.set_status(
+                cx,
+                ConnectionStatus::Error("Server URL and username are required.".into()),
+            );
             return;
         }
 
@@ -150,10 +157,16 @@ impl RemoteServersSettings {
             cx.notify();
         });
 
-        self.url_input.update(cx, |input, cx| input.set_value(cx, "".into()));
-        self.username_input.update(cx, |input, cx| input.set_value(cx, "".into()));
-        self.password_input.update(cx, |input, cx| input.set_value(cx, "".into()));
-        self.set_status(cx, ConnectionStatus::Success(tr!("SERVERS_SAVED", "Server saved and connected.").into()));
+        self.url_input
+            .update(cx, |input, cx| input.set_value(cx, "".into()));
+        self.username_input
+            .update(cx, |input, cx| input.set_value(cx, "".into()));
+        self.password_input
+            .update(cx, |input, cx| input.set_value(cx, "".into()));
+        self.set_status(
+            cx,
+            ConnectionStatus::Success(tr!("SERVERS_SAVED", "Server saved and connected.").into()),
+        );
     }
 
     fn remove_server(&self, cx: &mut App, server_id: String) {
@@ -172,14 +185,12 @@ impl Render for RemoteServersSettings {
         let servers = self.settings.read(cx).opensubsonic.servers.clone();
         let status = self.status.read(cx).clone();
 
-        let mut body = div()
-            .flex()
-            .flex_col()
-            .gap(px(12.0))
-            .child(section_header(tr!("SERVERS", "Remote Music Servers")).subtitle(tr!(
+        let mut body = div().flex().flex_col().gap(px(12.0)).child(
+            section_header(tr!("SERVERS", "Remote Music Servers")).subtitle(tr!(
                 "SERVERS_SUBTITLE",
                 "Connect to an OpenSubsonic or Subsonic server such as Navidrome."
-            )));
+            )),
+        );
 
         for server in &servers {
             body = body.child(
@@ -194,24 +205,40 @@ impl Render for RemoteServersSettings {
                             .on_click({
                                 let id = server.id.clone();
                                 let this = cx.entity();
-                                move |_, _, cx| this.update(cx, |this, cx| this.remove_server(cx, id.clone()))
+                                move |_, _, cx| {
+                                    this.update(cx, |this, cx| this.remove_server(cx, id.clone()))
+                                }
                             }),
                     ),
             );
         }
 
         if servers.is_empty() {
-            body = body.child(div().text_sm().text_color(theme.text_secondary).child(tr!(
-                "SERVERS_NONE",
-                "No remote servers connected yet."
-            )));
+            body = body.child(
+                div()
+                    .text_sm()
+                    .text_color(theme.text_secondary)
+                    .child(tr!("SERVERS_NONE", "No remote servers connected yet.")),
+            );
         }
 
         body = body
             .child(section_header(tr!("SERVERS_ADD", "Connect a server")))
-            .child(label("servers-url", tr!("SERVERS_URL", "Server URL")).w_full().child(self.url_input.clone()))
-            .child(label("servers-username", tr!("SERVERS_USERNAME", "Username")).w_full().child(self.username_input.clone()))
-            .child(label("servers-password", tr!("SERVERS_PASSWORD", "Password")).w_full().child(self.password_input.clone()))
+            .child(
+                label("servers-url", tr!("SERVERS_URL", "Server URL"))
+                    .w_full()
+                    .child(self.url_input.clone()),
+            )
+            .child(
+                label("servers-username", tr!("SERVERS_USERNAME", "Username"))
+                    .w_full()
+                    .child(self.username_input.clone()),
+            )
+            .child(
+                label("servers-password", tr!("SERVERS_PASSWORD", "Password"))
+                    .w_full()
+                    .child(self.password_input.clone()),
+            )
             .child(
                 div()
                     .flex()
@@ -241,16 +268,19 @@ impl Render for RemoteServersSettings {
         match status {
             ConnectionStatus::Idle => {}
             ConnectionStatus::Testing => {
-                body = body.child(div().text_sm().text_color(theme.text_secondary).child(tr!(
-                    "SERVERS_TESTING",
-                    "Testing connection…"
-                )));
+                body = body.child(
+                    div()
+                        .text_sm()
+                        .text_color(theme.text_secondary)
+                        .child(tr!("SERVERS_TESTING", "Testing connection…")),
+                );
             }
-            ConnectionStatus::Success(msg) => {
-                body = body.child(callout(msg));
+            ConnectionStatus::Success(ref msg) => {
+                body = body.child(callout(msg.clone()));
             }
-            ConnectionStatus::Error(msg) => {
-                body = body.child(callout(msg).icon(crate::ui::components::icons::ALERT_CIRCLE));
+            ConnectionStatus::Error(ref msg) => {
+                body = body
+                    .child(callout(msg.clone()).icon(crate::ui::components::icons::ALERT_CIRCLE));
             }
         }
 

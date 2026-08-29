@@ -16,6 +16,7 @@ pub mod credentials;
 pub mod errors;
 pub mod library;
 pub mod models;
+pub mod playback;
 pub mod settings;
 
 #[cfg(test)]
@@ -24,12 +25,10 @@ pub mod fixtures;
 #[cfg(test)]
 mod tests;
 
-pub use client::{
-    normalize_base_url, OpenSubsonicClient, ServerConfig, DEFAULT_API_VERSION,
-    DEFAULT_CLIENT_NAME,
-};
+pub use client::{DEFAULT_API_VERSION, DEFAULT_CLIENT_NAME, OpenSubsonicClient, ServerConfig};
 pub use credentials::Secret;
 pub use errors::SubsonicError;
+pub use settings::{OpenSubsonicSettings, register_servers};
 
 /// Registry of connected servers, keyed by stable server ID.
 ///
@@ -55,6 +54,7 @@ pub fn remove_client(server_id: &str) {
 }
 
 /// Clears all registered clients.
+#[allow(dead_code)]
 pub fn clear_clients() {
     CLIENTS
         .write()

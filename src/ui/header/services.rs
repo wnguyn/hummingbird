@@ -267,7 +267,7 @@ impl Render for ServicesIndicator {
             .when(cfg!(target_os = "macos"), |this| this.mr(px(8.0)))
             .child(
                 nav_button("services-indicator", indicator)
-                    .tooltip(build_tooltip(tr!("SERVICES")))
+                    .tooltip(build_tooltip(tr!("SERVICES", "Services")))
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(move |this, _, window, cx| {
@@ -357,7 +357,7 @@ impl Render for ServicesIndicator {
                     menu_item(
                         "services-open-settings",
                         None::<SharedString>,
-                        tr!("SETTINGS"),
+                        tr!("SETTINGS", "Settings"),
                         move |_, _, cx| {
                             open_settings_weak
                                 .update(cx, |this, cx| this.close_popover(cx))

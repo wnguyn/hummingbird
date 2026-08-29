@@ -8,9 +8,7 @@ use tracing::{debug, warn};
 use types::Session;
 
 use crate::{
-    media::metadata::Metadata,
-    playback::thread::PlaybackState,
-    providers::PlaybackSource,
+    media::metadata::Metadata, playback::thread::PlaybackState, providers::PlaybackSource,
 };
 
 use super::MediaMetadataBroadcastService;

@@ -11,7 +11,7 @@ pub fn token(password: &str, salt: &str) -> String {
     let mut context = md5::Context::new();
     context.consume(password.as_bytes());
     context.consume(salt.as_bytes());
-    format!("{:x}", context.compute())
+    format!("{:x}", context.finalize())
 }
 
 /// Generates a fresh random salt.

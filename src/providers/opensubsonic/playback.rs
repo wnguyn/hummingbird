@@ -67,7 +67,9 @@ impl SubsonicStreamSource {
         };
 
         // Probe with a one-byte range request to learn length + seekability.
-        let request = source.client.stream_request(&source.track_id, source.max_bit_rate)?;
+        let request = source
+            .client
+            .stream_request(&source.track_id, source.max_bit_rate)?;
         let response = request
             .header("Range", "bytes=0-0")
             .timeout(CHUNK_TIMEOUT)
@@ -127,8 +129,7 @@ impl SubsonicStreamSource {
         let fetch = async {
             let request = self
                 .client
-                .stream_request(&self.track_id, self.max_bit_rate)
-                .map_err(SubsonicError::Transport)?;
+                .stream_request(&self.track_id, self.max_bit_rate)?;
             let response = request
                 .header("Range", &range)
                 .timeout(CHUNK_TIMEOUT)
@@ -159,9 +160,7 @@ impl SubsonicStreamSource {
             Ok::<_, SubsonicError>(bytes)
         };
 
-        let bytes = crate::RUNTIME
-            .block_on(fetch)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let bytes = crate::RUNTIME.block_on(fetch).map_err(io::Error::other)?;
 
         self.buffer_start = start;
         self.buffer = bytes.to_vec();
@@ -209,9 +208,9 @@ impl Seek for SubsonicStreamSource {
         let base = match pos {
             SeekFrom::Start(p) => p,
             SeekFrom::End(offset) => {
-                let len = self.length.ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::Unsupported, "unknown stream length")
-                })?;
+                let len = self
+                    .length
+                    .ok_or_else(|| io::Error::other("unknown stream length"))?;
                 len.saturating_add_signed(offset)
             }
             SeekFrom::Current(offset) => self.position.saturating_add_signed(offset),

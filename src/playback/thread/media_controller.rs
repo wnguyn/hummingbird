@@ -65,13 +65,13 @@ impl MediaController {
                     Ok(None) => {
                         return Err(PlaybackStartError::MediaError(
                             "No media provider found".to_string(),
-                        ))
+                        ));
                     }
                     Err(e) => {
                         return Err(PlaybackStartError::MediaError(format!(
                             "Unable to open media: {}",
                             e
-                        )))
+                        )));
                     }
                 }
             }
@@ -85,13 +85,13 @@ impl MediaController {
                         return Err(PlaybackStartError::MediaError(format!(
                             "No decoder for remote format '{}'",
                             track.suffix.as_deref().unwrap_or("unknown")
-                        )))
+                        )));
                     }
                     Err(e) => {
                         return Err(PlaybackStartError::MediaError(format!(
                             "Unable to open remote media: {}",
                             e
-                        )))
+                        )));
                     }
                 }
             }

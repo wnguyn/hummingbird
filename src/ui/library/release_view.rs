@@ -560,9 +560,9 @@ impl Render for ReleaseView {
             .read(cx)
             .clone()
             .is_some_and(|current_track| {
-                self.tracks
-                    .iter()
-                    .any(|track| current_track == track.location && is_track_available(track))
+                self.tracks.iter().any(|track| {
+                    current_track.get_path() == Some(&track.location) && is_track_available(track)
+                })
             });
         let has_available_tracks = has_available_tracks(self.tracks.as_ref());
 

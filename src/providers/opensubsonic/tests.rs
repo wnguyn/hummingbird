@@ -6,7 +6,7 @@ use crate::providers::{
     opensubsonic::{
         fixtures,
         library::song_to_track_ref,
-        models::{Envelope, Empty},
+        models::{Empty, Envelope},
     },
 };
 
@@ -23,7 +23,10 @@ fn deserializes_auth_failure_error() {
     let envelope: Envelope<Empty> = serde_json::from_str(fixtures::PING_AUTH_FAILED).unwrap();
     let error = envelope.response.error.expect("error element");
     assert_eq!(error.code, 40);
-    assert_eq!(error.message.as_deref(), Some("Wrong username or password."));
+    assert_eq!(
+        error.message.as_deref(),
+        Some("Wrong username or password.")
+    );
 }
 
 #[test]
@@ -76,9 +79,10 @@ fn deserializes_playlist_with_entries() {
 
 #[test]
 fn deserializes_artists_indices() {
-    let artists: crate::providers::opensubsonic::models::Artists =
+    let artists: crate::providers::opensubsonic::models::ArtistsWrapper =
         fixtures::parse(fixtures::GET_ARTISTS);
     let names: Vec<&str> = artists
+        .artists
         .index
         .iter()
         .flat_map(|i| i.artist.iter())
@@ -89,16 +93,16 @@ fn deserializes_artists_indices() {
 
 #[test]
 fn deserializes_starred2() {
-    let starred: crate::providers::opensubsonic::models::Starred2 =
+    let starred: crate::providers::opensubsonic::models::Starred2Wrapper =
         fixtures::parse(fixtures::GET_STARRED2);
-    assert_eq!(starred.song.len(), 1);
+    assert_eq!(starred.starred2.song.len(), 1);
 }
 
 #[test]
 fn deserializes_structured_lyrics() {
-    let lyrics: crate::providers::opensubsonic::models::LyricsList =
+    let lyrics: crate::providers::opensubsonic::models::LyricsListWrapper =
         fixtures::parse(fixtures::GET_LYRICS_BY_SONG_ID);
-    let structured = &lyrics.structured_lyrics[0];
+    let structured = &lyrics.lyrics_list.structured_lyrics[0];
     assert!(structured.synced.unwrap());
     assert_eq!(structured.line.len(), 2);
     assert_eq!(structured.line[0].value.as_deref(), Some("First line"));
@@ -129,7 +133,7 @@ fn local_and_remote_identities_do_not_collide() {
     use std::path::PathBuf;
 
     let local = PlaybackSource::Local(PathBuf::from("/music/s-1.mp3"));
-    let remote = PlaybackSource::Subsonic(SubsonicTrackRef {
+    let remote = PlaybackSource::Subsonic(Box::new(SubsonicTrackRef {
         server_id: "server-1".into(),
         id: "s-1".into(),
         title: "Xtal".into(),
@@ -144,13 +148,16 @@ fn local_and_remote_identities_do_not_collide() {
         genre: None,
         track_number: None,
         disc_number: None,
-    });
+    }));
 
     assert_ne!(local, remote);
     assert!(local.is_local());
     assert!(!remote.is_local());
     assert_eq!(remote.as_subsonic().map(|t| t.id.as_str()), Some("s-1"));
-    assert_eq!(local.local_path().map(|p| p.as_path()), Some(std::path::Path::new("/music/s-1.mp3")));
+    assert_eq!(
+        local.local_path().map(|p| p.as_path()),
+        Some(std::path::Path::new("/music/s-1.mp3"))
+    );
 }
 
 #[test]
@@ -171,7 +178,10 @@ fn remote_identity_includes_server_id() {
         track_number: None,
         disc_number: None,
     };
-    let b = SubsonicTrackRef { server_id: "server-2".into(), ..a.clone() };
+    let b = SubsonicTrackRef {
+        server_id: "server-2".into(),
+        ..a.clone()
+    };
     assert_ne!(a, b);
 }
 
@@ -179,7 +189,7 @@ fn remote_identity_includes_server_id() {
 fn playable_source_round_trips_serde() {
     use std::path::PathBuf;
 
-    let source = PlaybackSource::Subsonic(SubsonicTrackRef {
+    let source = PlaybackSource::Subsonic(Box::new(SubsonicTrackRef {
         server_id: "server-1".into(),
         id: "s-1".into(),
         title: "Xtal".into(),
@@ -194,7 +204,7 @@ fn playable_source_round_trips_serde() {
         genre: None,
         track_number: Some(1),
         disc_number: None,
-    });
+    }));
 
     let json = serde_json::to_string(&source).unwrap();
     let restored: PlaybackSource = serde_json::from_str(&json).unwrap();
@@ -244,4 +254,97 @@ fn queue_item_with_remote_source_round_trips() {
     let reserialized = serde_json::to_value(&item).unwrap();
     let again: QueueItemData = serde_json::from_value(reserialized).unwrap();
     assert_eq!(item, again);
+}
+
+#[test]
+fn deserializes_genres_and_extensions() {
+    let extensions = fixtures::sample_extensions_list();
+    assert_eq!(extensions.len(), 2);
+    assert_eq!(extensions[0].name, "songLyrics");
+    assert_eq!(extensions[0].versions, vec![1]);
+
+    let genre_json = r#"{
+      "subsonic-response": {
+        "status": "ok",
+        "version": "1.16.1",
+        "genres": {
+          "genre": [
+            { "value": "Electronic", "songCount": 100, "albumCount": 10 },
+            { "value": "Ambient", "songCount": 50, "albumCount": 5 }
+          ]
+        }
+      }
+    }"#;
+    let genres_wrapper: crate::providers::opensubsonic::models::GenresWrapper =
+        fixtures::parse(genre_json);
+    assert_eq!(genres_wrapper.genres.genre.len(), 2);
+    assert_eq!(genres_wrapper.genres.genre[0].value, "Electronic");
+    assert_eq!(genres_wrapper.genres.genre[0].song_count, Some(100));
+}
+
+#[test]
+fn deserializes_album_list2_and_playlists() {
+    let album_list_wrapper: crate::providers::opensubsonic::models::AlbumList2Wrapper =
+        fixtures::parse(fixtures::GET_ALBUM_LIST2);
+    assert_eq!(album_list_wrapper.album_list2.album.len(), 2);
+    assert_eq!(
+        album_list_wrapper.album_list2.album[0].name,
+        "Selected Ambient Works 85-92"
+    );
+
+    let playlists_wrapper: crate::providers::opensubsonic::models::PlaylistsWrapper =
+        fixtures::parse(fixtures::GET_PLAYLISTS);
+    assert_eq!(playlists_wrapper.playlists.playlist.len(), 1);
+    assert_eq!(playlists_wrapper.playlists.playlist[0].name, "Chill");
+}
+
+#[test]
+fn client_registry_add_lookup_remove() {
+    use crate::providers::opensubsonic::{self, Secret, ServerConfig};
+
+    let config = ServerConfig {
+        id: "test-server-42".into(),
+        name: "Test Navidrome".into(),
+        url: "https://music.example.com".into(),
+        username: "alice".into(),
+        password: Secret::new("secret"),
+        api_version: "1.16.1".into(),
+        client_name: "Hummingbird".into(),
+    };
+    let client = config.client().expect("valid client");
+    opensubsonic::register_client("test-server-42".into(), client);
+
+    assert!(opensubsonic::client_for("test-server-42").is_some());
+    assert!(opensubsonic::client_for("non-existent").is_none());
+
+    opensubsonic::remove_client("test-server-42");
+    assert!(opensubsonic::client_for("test-server-42").is_none());
+}
+
+#[test]
+fn url_normalization_and_token_generation() {
+    use crate::providers::opensubsonic::{auth, client::normalize_base_url};
+
+    let u1 = normalize_base_url("https://music.example.com/subsonic").unwrap();
+    assert_eq!(u1.as_str(), "https://music.example.com/subsonic/");
+
+    let u2 = normalize_base_url("http://localhost:4533///").unwrap();
+    assert_eq!(u2.as_str(), "http://localhost:4533/");
+
+    let token = auth::token("sesame", "c19b2d");
+    assert_eq!(token, "26719a1196d2a940705a59634eb18eab");
+}
+
+#[test]
+fn subsonic_error_messages_do_not_leak_passwords() {
+    use crate::providers::opensubsonic::errors::SubsonicError;
+
+    let err = SubsonicError::AuthenticationFailed;
+    assert_eq!(
+        err.to_string(),
+        "Authentication failed (wrong username or password)"
+    );
+
+    let not_conn = SubsonicError::NotConnected;
+    assert_eq!(not_conn.to_string(), "Server is not connected");
 }

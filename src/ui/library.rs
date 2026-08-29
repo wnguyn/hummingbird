@@ -7,8 +7,10 @@ use cntp_i18n::tr;
 use files_view::FilesView;
 use gpui::{prelude::FluentBuilder, *};
 use release_view::ReleaseView;
+#[cfg(feature = "libre-services")]
 use remote::RemoteLibrary;
 use tracing::debug;
+use track_view::TrackView;
 
 #[derive(Clone, Default)]
 struct ScrollStateStorage {
@@ -55,6 +57,7 @@ mod release_view;
 #[cfg(feature = "libre-services")]
 mod remote;
 mod sidebar;
+mod table_view_header;
 mod track_listing;
 mod track_view;
 mod update_playlist;
@@ -75,8 +78,8 @@ pub struct NavigationHistory {
 impl NavigationHistory {
     pub fn new(startup_view: ViewSwitchMessage) -> Self {
         Self {
-            startup_view,
-            history: vec![startup_view.clone()],
+            startup_view: startup_view.clone(),
+            history: vec![startup_view],
             cursor: 0,
             forward_peek_generation: 0,
             forward_peek_armed: true,
@@ -314,6 +317,7 @@ pub enum ViewSwitchMessage {
     Remote(String),
     Artist(i64),
     Playlist(i64),
+    Release(i64, Option<i64>),
     Back,
     Forward,
     Refresh,
@@ -395,7 +399,9 @@ fn make_view(
         ViewSwitchMessage::Remote(server_id) => {
             LibraryView::Remote(RemoteLibrary::new(cx, server_id.clone()))
         }
-        ViewSwitchMessage::Back => panic!("improper use of make_view (cannot make Back)"),
+        ViewSwitchMessage::Back | ViewSwitchMessage::Forward | ViewSwitchMessage::Refresh => {
+            panic!("improper use of make_view (cannot make navigation control action)")
+        }
     }
 }
 
