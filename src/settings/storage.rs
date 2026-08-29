@@ -260,8 +260,8 @@ impl Storage {
                 serde_json::from_reader(file)
                     .map_err(|e| e.into())
                     .map(|data: StorageData| match &data.current_track {
-                        // validate whether path still exists
-                        Some(current_track) if !current_track.get_path().exists() => StorageData {
+                        // validate whether the local path still exists (remote tracks stay)
+                        Some(current_track) if !current_track.source().is_playable() => StorageData {
                             current_track: None,
                             // Preserve other settings when invalidating current_track
                             ..data

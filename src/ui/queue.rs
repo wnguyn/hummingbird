@@ -4,7 +4,6 @@ use crate::{
     playback::{interface::PlaybackInterface, queue::QueueItemData},
     settings::SettingsGlobal,
     ui::{
-        availability::is_track_path_available,
         components::{
             context::context,
             drag_drop::{
@@ -236,7 +235,7 @@ impl Render for QueueItem {
         let is_available = self
             .item
             .as_ref()
-            .is_some_and(|queue_item| is_track_path_available(queue_item.get_path()));
+            .is_some_and(|queue_item| queue_item.get_source().is_playable());
         let is_selected = self.selection.read(cx).contains(self.idx);
 
         if let Some(item) = ui_data.as_ref() {
@@ -251,7 +250,8 @@ impl Render for QueueItem {
             let image_key = track_id.map(ManagedImageKey::Track).or_else(|| {
                 self.item
                     .as_ref()
-                    .map(|i| ManagedImageKey::TrackFile(i.get_path().to_path_buf()))
+                    .and_then(|i| i.get_source().local_path())
+                    .map(|p| ManagedImageKey::TrackFile(p.clone()))
             });
             let idx = self.idx;
             let current = self.current;
@@ -362,7 +362,7 @@ impl Render for QueueItem {
                             let path_for_drag = self
                                 .item
                                 .as_ref()
-                                .map(|i| i.get_path().to_path_buf())
+                                .and_then(|i| i.get_source().local_path().cloned())
                                 .unwrap_or_default();
                             let mut drag_data = if let Some(tid) = self.track_id {
                                 TrackDragData::from_track(

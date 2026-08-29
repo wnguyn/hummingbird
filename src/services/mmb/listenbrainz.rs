@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -7,7 +7,11 @@ use gpui::SharedString;
 use tracing::{debug, warn};
 use types::Session;
 
-use crate::{media::metadata::Metadata, playback::thread::PlaybackState};
+use crate::{
+    media::metadata::Metadata,
+    playback::thread::PlaybackState,
+    providers::PlaybackSource,
+};
 
 use super::MediaMetadataBroadcastService;
 
@@ -68,7 +72,7 @@ impl ListenBrainz {
 
 #[async_trait]
 impl MediaMetadataBroadcastService for ListenBrainz {
-    async fn new_track(&mut self, _: PathBuf) {
+    async fn new_track(&mut self, _: PlaybackSource) {
         if !self.enabled {
             return;
         }

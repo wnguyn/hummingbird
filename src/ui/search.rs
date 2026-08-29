@@ -44,7 +44,7 @@ impl SearchView {
                 &search,
                 |this: &mut SearchView, _, ev: &ViewSwitchMessage, cx| {
                     this.view_switcher.update(cx, |_, cx| {
-                        cx.emit(*ev);
+                        cx.emit(ev.clone());
                     });
                     this.reset(cx);
                 },

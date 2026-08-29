@@ -38,6 +38,7 @@ use crate::{
         queue::{QueueItemData, QueueItemUIData},
         thread::PlaybackState,
     },
+    providers::PlaybackSource,
     services::mmb::{
         MediaMetadataBroadcastService,
         discord::{self, Discord, DiscordRpcStatus},
@@ -121,21 +122,20 @@ pub struct Models {
 impl Global for Models {}
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub struct CurrentTrack(PathBuf);
+pub struct CurrentTrack(PlaybackSource);
 
 impl CurrentTrack {
-    pub fn new(path: PathBuf) -> Self {
-        CurrentTrack(path)
+    pub fn new(source: PlaybackSource) -> Self {
+        CurrentTrack(source)
     }
 
-    pub fn get_path(&self) -> &PathBuf {
+    pub fn source(&self) -> &PlaybackSource {
         &self.0
     }
-}
 
-impl PartialEq<std::path::PathBuf> for CurrentTrack {
-    fn eq(&self, other: &std::path::PathBuf) -> bool {
-        &self.0 == other
+    /// The local path, if this is a local track.
+    pub fn get_path(&self) -> Option<&PathBuf> {
+        self.0.local_path()
     }
 }
 
@@ -174,7 +174,7 @@ pub struct MMBSList(pub FxHashMap<String, Arc<Mutex<dyn MediaMetadataBroadcastSe
 
 #[derive(Clone)]
 pub enum MMBSEvent {
-    NewTrack(PathBuf),
+    NewTrack(PlaybackSource),
     MetadataRecieved(Arc<Metadata>),
     StateChanged(PlaybackState),
     PositionChanged(u64),
@@ -353,6 +353,8 @@ pub fn build_models(
         discord_status_tx,
     );
 
+    #[cfg(feature = "libre-services")]
+    create_subsonic_mmbs(cx, &mmbs);
     let discord_rpc_model = discord_rpc.clone();
     cx.spawn(async move |cx| {
         while discord_status_rx.changed().await.is_ok() {
@@ -458,7 +460,7 @@ pub fn build_models(
             crate::RUNTIME.spawn(async move {
                 let mut borrow = mmbs.lock().await;
                 match ev {
-                    MMBSEvent::NewTrack(path) => borrow.new_track(path),
+                    MMBSEvent::NewTrack(source) => borrow.new_track(source),
                     MMBSEvent::MetadataRecieved(metadata) => borrow.metadata_recieved(metadata),
                     MMBSEvent::StateChanged(state) => borrow.state_changed(state),
                     MMBSEvent::PositionChanged(position) => borrow.position_changed(position),
@@ -671,6 +673,17 @@ pub fn create_discord_mmbs(
     let mmbs = Discord::new(enabled, status_tx);
     mmbs_list.update(cx, |m, _| {
         m.0.insert(discord::MMBS_KEY.to_string(), Arc::new(Mutex::new(mmbs)));
+    });
+}
+
+#[cfg(feature = "libre-services")]
+pub fn create_subsonic_mmbs(cx: &mut App, mmbs_list: &Entity<MMBSList>) {
+    let mmbs = crate::services::mmb::subsonic::SubsonicScrobbler::default();
+    mmbs_list.update(cx, |m, _| {
+        m.0.insert(
+            crate::services::mmb::subsonic::MMBS_KEY.to_string(),
+            Arc::new(Mutex::new(mmbs)),
+        );
     });
 }
 

@@ -4,6 +4,8 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+use crate::providers::PlaybackSource;
+
 use async_trait::async_trait;
 use discord_rich_presence::{
     DiscordIpc, DiscordIpcClient,
@@ -300,12 +302,16 @@ impl Discord {
 
 #[async_trait]
 impl MediaMetadataBroadcastService for Discord {
-    async fn new_track(&mut self, file_path: PathBuf) {
+    async fn new_track(&mut self, source: PlaybackSource) {
         self.metadata = None;
         self.start_time = None;
         self.last_duration = None;
         self.last_position = 0;
-        self.last_path = Some(file_path);
+        self.last_path = source.local_path().cloned().or_else(|| {
+            source
+                .as_subsonic()
+                .map(|t| PathBuf::from(t.title.clone()))
+        });
 
         if !self.enabled {
             return;

@@ -91,6 +91,7 @@ pub enum ManagedImageKey {
     Album(i64),
     Track(i64),
     TrackFile(PathBuf),
+    RemoteCoverArt { server_id: String, cover_art: String },
 }
 
 impl ManagedImageKey {
@@ -145,7 +146,9 @@ impl ManagedImageKey {
                     (ManagedImageKey::Track(_), false) => {
                         include_str!("../../../queries/assets/find_track_art.sql")
                     }
-                    (ManagedImageKey::TrackFile(_), _) => unreachable!(),
+                    (ManagedImageKey::TrackFile(_), _) | (ManagedImageKey::RemoteCoverArt { .. }, _) => {
+                        unreachable!()
+                    }
                 };
                 let Some((image_encoded,)): Option<(Option<Vec<u8>>,)> =
                     sqlx::query_as(query).bind(id).fetch_optional(&pool).await?
@@ -166,6 +169,20 @@ impl ManagedImageKey {
                     })
                     .await??;
 
+                Ok(image)
+            }
+            ManagedImageKey::RemoteCoverArt {
+                server_id,
+                cover_art,
+            } => {
+                let bytes = crate::providers::fetch_cover_art(server_id, cover_art, max_px)
+                    .await
+                    .map_err(anyhow::Error::msg)?;
+                let image =
+                    run_blocking_with_permit(Arc::clone(&IMAGE_DECODE_PERMITS), move || {
+                        decode_to_render_image(&bytes, max_px).map(Some)
+                    })
+                    .await??;
                 Ok(image)
             }
         }

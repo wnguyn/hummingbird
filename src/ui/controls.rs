@@ -6,6 +6,7 @@ use crate::{
         events::RepeatState, interface::PlaybackInterface, queue::QueueItemUIData,
         thread::PlaybackState,
     },
+    providers::PlaybackSource,
     settings::SettingsGlobal,
     ui::{
         caching::hummingbird_cache,
@@ -33,7 +34,7 @@ use crate::{
 use cntp_i18n::tr;
 use gpui::{InteractiveElement, *};
 use prelude::FluentBuilder;
-use std::{path::PathBuf, rc::Rc, time::Duration};
+use std::{rc::Rc, time::Duration};
 
 use self::replaygain::ReplayGainButton;
 use super::{
@@ -120,7 +121,7 @@ pub struct InfoSection {
     artist_name: Option<SharedString>,
     playback_info: PlaybackInfo,
     is_hovering_art: bool,
-    current_track_path: Option<PathBuf>,
+    current_track_source: Option<PlaybackSource>,
     current_library_track: Option<Rc<Track>>,
     can_navigate_to_album: bool,
     can_navigate_to_artist: bool,
@@ -166,9 +167,9 @@ fn resolve_queue_item_metadata(this: &mut InfoSection, cx: &mut Context<InfoSect
     let Some(item) = item else { return };
 
     if this
-        .current_track_path
+        .current_track_source
         .as_ref()
-        .is_none_or(|path| path != item.get_path())
+        .is_none_or(|source| source != item.get_source())
     {
         return;
     }
@@ -240,12 +241,14 @@ impl InfoSection {
             .detach();
 
             let initial_current_track = current_track_model.read(cx).clone();
-            let current_track_path = initial_current_track
+            let current_track_source = initial_current_track
                 .as_ref()
-                .map(|track| track.get_path().clone());
-            let current_library_track = initial_current_track
-                .as_ref()
-                .and_then(|track| resolve_library_track_by_path(cx, track.get_path()));
+                .map(|track| track.source().clone());
+            let current_library_track = initial_current_track.as_ref().and_then(|track| {
+                track
+                    .get_path()
+                    .and_then(|path| resolve_library_track_by_path(cx, path))
+            });
             let can_navigate_to_album = current_library_track
                 .as_ref()
                 .is_some_and(|track| track.album_id.is_some());
@@ -273,7 +276,7 @@ impl InfoSection {
                 track_name: None,
                 playback_info,
                 is_hovering_art: false,
-                current_track_path,
+                current_track_source,
                 current_library_track,
                 can_navigate_to_album,
                 can_navigate_to_artist,
@@ -306,9 +309,9 @@ impl Render for InfoSection {
             .as_ref()
             .map(|track| ManagedImageKey::Track(track.id))
             .or_else(|| {
-                self.current_track_path
+                self.current_track_source
                     .as_ref()
-                    .map(|p| ManagedImageKey::TrackFile(p.clone()))
+                    .and_then(|s| s.local_path().map(|p| ManagedImageKey::TrackFile(p.clone())))
             });
         let image_element_key = self.image_element_key;
         let theme = cx.global::<Theme>();
@@ -496,7 +499,7 @@ impl Render for InfoSection {
                     }),
             );
 
-        if self.current_track_path.is_some() || self.current_library_track.is_some() {
+        if self.current_track_source.is_some() || self.current_library_track.is_some() {
             let show_add_to = add_to_state.as_ref().map(|(s, _)| s.clone());
             let add_to = add_to_state.map(|(_, a)| a);
 
@@ -506,7 +509,9 @@ impl Render for InfoSection {
                         div()
                             .bg(theme.elevated_background)
                             .child(InfoSectionContextMenu::new(
-                                self.current_track_path.clone(),
+                                self.current_track_source
+                                    .as_ref()
+                                    .and_then(|s| s.local_path().cloned()),
                                 self.current_library_track.clone(),
                                 self.is_liked,
                                 show_add_to,
@@ -527,11 +532,14 @@ fn update_current_track_state(
     current_track: Option<&CurrentTrack>,
     cx: &App,
 ) {
-    this.current_track_path = current_track.map(|track| track.get_path().clone());
+    this.current_track_source = current_track.map(|track| track.source().clone());
     this.track_name = None;
     this.artist_name = None;
-    this.current_library_track =
-        current_track.and_then(|track| resolve_library_track_by_path(cx, track.get_path()));
+    this.current_library_track = current_track.and_then(|track| {
+        track
+            .get_path()
+            .and_then(|path| resolve_library_track_by_path(cx, path))
+    });
     this.can_navigate_to_album = this
         .current_library_track
         .as_ref()

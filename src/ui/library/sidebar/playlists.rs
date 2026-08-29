@@ -190,7 +190,7 @@ fn delete_playlist_and_refresh(pl_id: i64, cx: &mut App) {
 
     let switcher_model = cx.global::<Models>().switcher_model.clone();
     switcher_model.update(cx, |history, cx| {
-        history.retain(|v| *v != ViewSwitchMessage::Playlist(pl_id));
+        history.retain(|v| v != &ViewSwitchMessage::Playlist(pl_id));
         cx.emit(ViewSwitchMessage::Refresh);
         cx.notify();
     })
@@ -356,7 +356,7 @@ impl Render for PlaylistList {
                     });
                 }))
                 .when(
-                    sidebar_view == ViewSwitchMessage::Playlist(playlist.id),
+                    matches!(&sidebar_view, ViewSwitchMessage::Playlist(id) if id == &playlist.id),
                     |this| this.active(),
                 )
                 .when(allow_reorder, |this| {

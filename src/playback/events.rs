@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{queue::QueueItemData, thread::PlaybackState};
-use std::path::PathBuf;
+use crate::providers::PlaybackSource;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub enum RepeatState {
@@ -30,7 +30,7 @@ pub enum PlaybackCommand {
     /// Requests that, if the playback thread is playing, it pauses, and vise/versa.
     TogglePlayPause,
     /// Requests that the playback thread open the specified file for immediate playback.
-    Open(PathBuf),
+    Open(PlaybackSource),
     /// Requests that the playback thread queue the specified file for playback after the current
     /// file. If there is no current file, the specified file will be played immediately.
     Queue(QueueItemData),
@@ -111,7 +111,7 @@ pub enum PlaybackEvent {
     /// Indicates that the playback state has changed.
     StateChanged(PlaybackState),
     /// Indicates that the current file has changed providing the path to the new file.
-    SongChanged(PathBuf),
+    SongChanged(PlaybackSource),
     /// Indicates that the duration of the current file has changed. The u64 is the new duration,
     /// in milliseconds.
     DurationChanged(u64),

@@ -1,4 +1,9 @@
-use std::{ffi::OsStr, fs::File, io::Seek};
+use std::{
+    ffi::OsStr,
+    io::{Read, Seek},
+};
+
+use symphonia::core::io::MediaSource;
 
 use lofty::config::ParseOptions;
 use lofty::file::{AudioFile, FileType, TaggedFileExt};
@@ -125,7 +130,7 @@ struct TagsFromFile {
 
 /// The ID3v2 version is needed because v2.3 tags packed several names into one value with `/`;
 /// the unified tag view drops it, so the file is re-read, skipping properties.
-fn read_id3v2_version(file: &mut File, file_type: FileType) -> Option<Id3v2Version> {
+fn read_id3v2_version<R: Read + Seek + ?Sized>(file: &mut R, file_type: FileType) -> Option<Id3v2Version> {
     use lofty::aac::AacFile;
     use lofty::iff::{aiff::AiffFile, wav::WavFile};
     use lofty::mpeg::MpegFile;
@@ -334,8 +339,8 @@ fn tags_by_priority(tags: &[Tag], has_id3v2: bool) -> Vec<&Tag> {
         .collect()
 }
 
-fn read_tags_from_file(mut file: File) -> Result<TagsFromFile, OpenError> {
-    let tagged_file = lofty::read_from(&mut file).map_err(|_| OpenError::UnsupportedFormat)?;
+fn read_tags_from_file<R: Read + Seek + ?Sized>(file: &mut R) -> Result<TagsFromFile, OpenError> {
+    let tagged_file = lofty::read_from(file).map_err(|_| OpenError::UnsupportedFormat)?;
 
     let mut metadata = Metadata::default();
     let mut image: Option<Box<[u8]>> = None;
@@ -350,7 +355,7 @@ fn read_tags_from_file(mut file: File) -> Result<TagsFromFile, OpenError> {
         .iter()
         .any(|tag| tag.tag_type() == TagType::Id3v2);
     let id3v2_version = has_id3v2
-        .then(|| read_id3v2_version(&mut file, tagged_file.file_type()))
+        .then(|| read_id3v2_version(file, tagged_file.file_type()))
         .flatten();
 
     let mut artist_names = ArtistNames::default();
@@ -397,8 +402,12 @@ pub struct LoftyStream {
 }
 
 impl MediaProvider for LoftyProvider {
-    fn open(&self, file: File, _ext: Option<&OsStr>) -> Result<Box<dyn MediaStream>, OpenError> {
-        let tags = read_tags_from_file(file)?;
+    fn open(
+        &self,
+        mut source: Box<dyn MediaSource>,
+        _ext: Option<&OsStr>,
+    ) -> Result<Box<dyn MediaStream>, OpenError> {
+        let tags = read_tags_from_file(&mut *source)?;
 
         Ok(Box::new(LoftyStream {
             metadata: tags.metadata,
@@ -508,7 +517,7 @@ mod tests {
         let path = fixture_path(name);
         let file = File::open(&path).unwrap_or_else(|err| panic!("failed to open {name}: {err}"));
         let mut stream = LoftyProvider
-            .open(file, path.extension())
+            .open(Box::new(file), path.extension())
             .unwrap_or_else(|err| panic!("failed to read {name}: {err}"));
 
         stream.start_playback().unwrap();

@@ -7,8 +7,8 @@ use cntp_i18n::tr;
 use files_view::FilesView;
 use gpui::{prelude::FluentBuilder, *};
 use release_view::ReleaseView;
+use remote::RemoteLibrary;
 use tracing::debug;
-use track_view::TrackView;
 
 #[derive(Clone, Default)]
 struct ScrollStateStorage {
@@ -52,8 +52,9 @@ pub mod missing_folder_dialog;
 pub mod nav_buttons;
 pub mod playlist_view;
 mod release_view;
+#[cfg(feature = "libre-services")]
+mod remote;
 mod sidebar;
-mod table_view_header;
 mod track_listing;
 mod track_view;
 mod update_playlist;
@@ -75,7 +76,7 @@ impl NavigationHistory {
     pub fn new(startup_view: ViewSwitchMessage) -> Self {
         Self {
             startup_view,
-            history: vec![startup_view],
+            history: vec![startup_view.clone()],
             cursor: 0,
             forward_peek_generation: 0,
             forward_peek_armed: true,
@@ -84,7 +85,7 @@ impl NavigationHistory {
     }
 
     pub fn current(&self) -> ViewSwitchMessage {
-        self.history[self.cursor]
+        self.history[self.cursor].clone()
     }
 
     pub fn can_go_back(&self) -> bool {
@@ -106,7 +107,7 @@ impl NavigationHistory {
     /// Returns the history entry immediately before the cursor, if any.
     pub fn previous(&self) -> Option<ViewSwitchMessage> {
         if self.cursor > 0 {
-            Some(self.history[self.cursor - 1])
+            Some(self.history[self.cursor - 1].clone())
         } else {
             None
         }
@@ -187,7 +188,7 @@ impl NavigationHistory {
             .iter()
             .rev()
             .find(|m| pred(m))
-            .copied()
+            .cloned()
     }
 
     /// Removes history entries that do not satisfy `f`, adjusting the cursor so that it continues
@@ -208,7 +209,7 @@ impl NavigationHistory {
         self.history.retain(f);
 
         if self.history.is_empty() {
-            self.history.push(self.startup_view);
+            self.history.push(self.startup_view.clone());
             self.cursor = 0;
         } else {
             self.cursor = self
@@ -250,6 +251,8 @@ impl LibrarySection {
             ViewSwitchMessage::Playlist(_) => Some(Self::Playlists),
             // Release can appear under Albums or Artists – keep current section.
             ViewSwitchMessage::Release(_, _) => None,
+            #[cfg(feature = "libre-services")]
+            ViewSwitchMessage::Remote(_) => None,
             ViewSwitchMessage::Back | ViewSwitchMessage::Forward | ViewSwitchMessage::Refresh => {
                 None
             }
@@ -266,6 +269,8 @@ enum LibraryView {
     Artists(Entity<ArtistView>),
     ArtistDetail(Entity<ArtistDetailView>),
     Files(Entity<FilesView>),
+    #[cfg(feature = "libre-services")]
+    Remote(Entity<RemoteLibrary>),
 }
 
 impl LibraryView {
@@ -278,6 +283,8 @@ impl LibraryView {
             LibraryView::Release(_) => "albums",
             LibraryView::ArtistDetail(_) => "artists",
             LibraryView::Files(_) => "files",
+            #[cfg(feature = "libre-services")]
+            LibraryView::Remote(_) => "albums",
         }
     }
 }
@@ -296,14 +303,15 @@ pub struct Library {
     _focus_lost_sub: Option<Subscription>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ViewSwitchMessage {
     Albums,
     Tracks,
     Artists,
     Files,
-    /// album id, track id
-    Release(i64, Option<i64>),
+    #[cfg(feature = "libre-services")]
+    /// Open the remote library for a connected OpenSubsonic server.
+    Remote(String),
     Artist(i64),
     Playlist(i64),
     Back,
@@ -328,14 +336,26 @@ impl ViewSwitchMessage {
     }
 
     fn library_view_matches(&self, lv: &LibraryView) -> bool {
-        matches!(
+        let base = matches!(
             (lv, self),
             (LibraryView::Album(_), ViewSwitchMessage::Albums)
                 | (LibraryView::Tracks(_), ViewSwitchMessage::Tracks)
                 // ArtistDetail: don't cache – we can't verify the id matches without extra storage
                 | (LibraryView::Artists(_), ViewSwitchMessage::Artists)
                 | (LibraryView::Files(_), ViewSwitchMessage::Files)
-        )
+        );
+
+        #[cfg(feature = "libre-services")]
+        {
+            base || matches!(
+                (lv, self),
+                (LibraryView::Remote(_), ViewSwitchMessage::Remote(_))
+            )
+        }
+        #[cfg(not(feature = "libre-services"))]
+        {
+            base
+        }
     }
 }
 
@@ -371,9 +391,11 @@ fn make_view(
             LibraryView::ArtistDetail(ArtistDetailView::new(cx, *id, model.clone()))
         }
         ViewSwitchMessage::Playlist(id) => LibraryView::Playlist(PlaylistView::new(cx, *id)),
+        #[cfg(feature = "libre-services")]
+        ViewSwitchMessage::Remote(server_id) => {
+            LibraryView::Remote(RemoteLibrary::new(cx, server_id.clone()))
+        }
         ViewSwitchMessage::Back => panic!("improper use of make_view (cannot make Back)"),
-        ViewSwitchMessage::Forward => panic!("improper use of make_view (cannot make Forward)"),
-        ViewSwitchMessage::Refresh => panic!("improper use of make_view (cannot make Refresh)"),
     }
 }
 
@@ -499,7 +521,7 @@ impl Library {
 
                         _ => {
                             m.update(cx, |history, cx| {
-                                history.navigate(*message);
+                                history.navigate(message.clone());
                                 cx.notify();
                             });
 
@@ -634,6 +656,8 @@ impl Render for Library {
                 LibraryView::Artists(v) => v.clone().into_any_element(),
                 LibraryView::ArtistDetail(v) => v.clone().into_any_element(),
                 LibraryView::Files(v) => v.clone().into_any_element(),
+                #[cfg(feature = "libre-services")]
+                LibraryView::Remote(v) => v.clone().into_any_element(),
             }
         }
 
@@ -762,7 +786,7 @@ impl Render for Library {
                 if let Some(dest) = parent {
                     // If the previous history entry matches the parent, go back
                     // instead of creating a new history entry.
-                    let msg = if switcher.read(cx).previous() == Some(dest) {
+                    let msg = if switcher.read(cx).previous() == Some(dest.clone()) {
                         ViewSwitchMessage::Back
                     } else {
                         dest

@@ -1,5 +1,5 @@
 use smallvec::SmallVec;
-use std::{ffi::OsStr, fs::File};
+use std::ffi::OsStr;
 use symphonia::{
     core::{
         audio::sample::SampleFormat as SymphSampleFormat,
@@ -10,7 +10,7 @@ use symphonia::{
         },
         errors::Error,
         formats::{FormatOptions, FormatReader, SeekMode, SeekTo, TrackType, probe::Hint},
-        io::MediaSourceStream,
+        io::{MediaSource, MediaSourceStream},
         meta::{MetadataOptions, StandardTag, Tag, Visual},
         units::{Time, TimeBase, Timestamp},
     },
@@ -313,8 +313,12 @@ impl SymphoniaStream {
 }
 
 impl MediaProvider for SymphoniaProvider {
-    fn open(&self, file: File, ext: Option<&OsStr>) -> Result<Box<dyn MediaStream>, OpenError> {
-        let mss = MediaSourceStream::new(Box::new(file), Default::default());
+    fn open(
+        &self,
+        source: Box<dyn MediaSource>,
+        ext: Option<&OsStr>,
+    ) -> Result<Box<dyn MediaStream>, OpenError> {
+        let mss = MediaSourceStream::new(source, Default::default());
         let meta_opts: MetadataOptions = Default::default();
         let fmt_opts: FormatOptions = Default::default();
 
@@ -909,7 +913,7 @@ mod tests {
             .join("assets/tests/audio-fixtures")
             .join(name);
         let file = std::fs::File::open(&path).unwrap();
-        SymphoniaProvider.open(file, path.extension()).unwrap()
+        SymphoniaProvider.open(Box::new(file), path.extension()).unwrap()
     }
 
     #[test]

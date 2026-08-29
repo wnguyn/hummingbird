@@ -1,4 +1,6 @@
-use std::{ffi::OsStr, fs::File};
+use std::ffi::OsStr;
+
+use symphonia::core::io::MediaSource;
 
 use bitflags::bitflags;
 
@@ -34,10 +36,15 @@ bitflags! {
 /// Metadata retrieval, decoding, or both. This allows for a decoding Provider to retrieve
 /// in-codec metadata without opening the file twice.
 pub trait MediaProvider: Send + Sync {
-    /// Requests the Provider open the specified file. The file is provided as a File object, and
-    /// the extension is provided as an Option<&OsStr>. If the extension is not provided, the
-    /// Provider attempts to determine the file type based off of the file's contents.
-    fn open(&self, file: File, ext: Option<&OsStr>) -> Result<Box<dyn MediaStream>, OpenError>;
+    /// Requests the Provider open the specified source. The source is any `Read + Seek` byte
+    /// source (a local file or an HTTP-backed stream), and the extension is provided as an
+    /// `Option<&OsStr>`. If the extension is not provided, the Provider attempts to determine the
+    /// file type from the source's contents.
+    fn open(
+        &self,
+        source: Box<dyn MediaSource>,
+        ext: Option<&OsStr>,
+    ) -> Result<Box<dyn MediaStream>, OpenError>;
 
     /// Returns a list of file extensions the plugin supports.
     fn supported_extensions(&self) -> &[&str];

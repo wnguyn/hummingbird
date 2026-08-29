@@ -405,7 +405,7 @@ pub fn run() -> anyhow::Result<()> {
             .filter(|position| *position < playback_session.queue.len());
         let initial_track = initial_position
             .and_then(|position| playback_session.queue.get(position))
-            .map(|item| CurrentTrack::new(item.get_path().clone()));
+            .map(|item| CurrentTrack::new(item.get_source().clone()));
 
         let queue: Arc<RwLock<Vec<QueueItemData>>> =
             Arc::new(RwLock::new(playback_session.queue.clone()));
@@ -419,6 +419,8 @@ pub fn run() -> anyhow::Result<()> {
 
         let settings = cx.global::<SettingsGlobal>().model.read(cx);
         let language = settings.interface.language.clone();
+        #[cfg(feature = "libre-services")]
+        crate::providers::opensubsonic::register_servers(&settings.opensubsonic);
         let playback_settings = settings.playback.clone();
         let scanning_settings = settings.scanning.clone();
         #[cfg(feature = "update")]

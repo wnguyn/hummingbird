@@ -151,9 +151,11 @@ pub fn play_from_track(cx: &mut App, track: &Track, queue_items: Vec<QueueItemDa
     }
 
     let playback_interface = cx.global::<PlaybackInterface>();
-    if let Some(index) = queue_items
-        .iter()
-        .position(|item| item.get_path() == &track.location)
+    if let Some(index) = queue_items.iter().position(|item| {
+        item.get_source()
+            .local_path()
+            .is_some_and(|path| path == &track.location)
+    })
     {
         playback_interface.replace_queue_with_index(queue_items, index);
     } else {

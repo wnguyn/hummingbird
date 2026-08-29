@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use gpui::App;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -8,6 +8,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use crate::{
     playback::{dsp::spectrum::SpectrumTapConsumer, events::RepeatState},
     power::PowerManager,
+    providers::PlaybackSource,
     settings::{equalizer::EqualizerSettings, playback::PlaybackSettings},
     ui::models::{CurrentTrack, ImageEvent, MMBSEvent, Models, PlaybackInfo},
 };
@@ -63,8 +64,8 @@ impl PlaybackInterface {
         self.cmd_tx.send(PlaybackCommand::Pause).unwrap();
     }
 
-    pub fn open(&self, path: PathBuf) {
-        self.cmd_tx.send(PlaybackCommand::Open(path)).unwrap();
+    pub fn open(&self, source: PlaybackSource) {
+        self.cmd_tx.send(PlaybackCommand::Open(source)).unwrap();
     }
 
     pub fn queue(&self, item: QueueItemData) {
@@ -290,13 +291,13 @@ impl PlaybackInterface {
                                 cx.emit(MMBSEvent::DurationChanged(v / 1_000));
                             });
                         }
-                        PlaybackEvent::SongChanged(path) => {
+                        PlaybackEvent::SongChanged(source) => {
                             playback_info.current_track.update(cx, |m, cx| {
-                                *m = Some(CurrentTrack::new(path.clone()));
+                                *m = Some(CurrentTrack::new(source.clone()));
                                 cx.notify()
                             });
                             mmbs_model.update(cx, |_, cx| {
-                                cx.emit(MMBSEvent::NewTrack(path));
+                                cx.emit(MMBSEvent::NewTrack(source));
                             });
                         }
                         PlaybackEvent::QueueUpdated => {

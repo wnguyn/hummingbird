@@ -283,7 +283,7 @@
   },
   "APP_NAME": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:408",
+    "definedIn": "src/ui/controls.rs:411",
     "plural": false,
     "description": "Use the english name everywhere unless this is strictly disagreeable.\n                                "
   },
@@ -847,7 +847,7 @@
   },
   "LIKE": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:487",
+    "definedIn": "src/ui/controls.rs:490",
     "plural": false,
     "description": null
   },
@@ -871,13 +871,13 @@
   },
   "LYRICS": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:1175",
+    "definedIn": "src/ui/controls.rs:1183",
     "plural": false,
     "description": null
   },
   "MUTE": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:1110",
+    "definedIn": "src/ui/controls.rs:1118",
     "plural": false,
     "description": null
   },
@@ -889,13 +889,13 @@
   },
   "NEXT_TRACK": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:758",
+    "definedIn": "src/ui/controls.rs:766",
     "plural": false,
     "description": null
   },
   "NO_LYRICS": {
     "context": "lyrics.rs",
-    "definedIn": "src/ui/lyrics.rs:186",
+    "definedIn": "src/ui/lyrics.rs:187",
     "plural": false,
     "description": null
   },
@@ -1033,7 +1033,7 @@
   },
   "PREVIOUS_TRACK": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:676",
+    "definedIn": "src/ui/controls.rs:684",
     "plural": false,
     "description": null
   },
@@ -1117,19 +1117,19 @@
   },
   "REPEAT": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:836",
+    "definedIn": "src/ui/controls.rs:844",
     "plural": false,
     "description": null
   },
   "REPEAT_OFF": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:826",
+    "definedIn": "src/ui/controls.rs:834",
     "plural": false,
     "description": null
   },
   "REPEAT_ONE": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:845",
+    "definedIn": "src/ui/controls.rs:853",
     "plural": false,
     "description": null
   },
@@ -1379,6 +1379,90 @@
     "plural": false,
     "description": null
   },
+  "SERVERS": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:179",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_ADD": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:211",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_FIELDS_REQUIRED": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:134",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_NONE": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:205",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_PASSWORD": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:214",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_REMOVE": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:193",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_SAVE": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:233",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_SAVED": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:156",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_SUBTITLE": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:180",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_TEST": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:223",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_TESTING": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:245",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_TEST_OK": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:121",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_URL": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:212",
+    "plural": false,
+    "description": null
+  },
+  "SERVERS_USERNAME": {
+    "context": "remote_servers.rs",
+    "definedIn": "src/ui/settings/remote_servers.rs:213",
+    "plural": false,
+    "description": null
+  },
   "SERVICES": {
     "context": "settings.rs",
     "definedIn": "src/ui/settings.rs:164",
@@ -1543,19 +1627,19 @@
   },
   "SHOW_IN_FILE_EXPLORER": {
     "context": "context_menus.rs",
-    "definedIn": "src/ui/library/context_menus.rs:216",
+    "definedIn": "src/ui/library/context_menus.rs:218",
     "plural": false,
     "description": null
   },
   "SHOW_IN_FILE_MANAGER": {
     "context": "context_menus.rs",
-    "definedIn": "src/ui/library/context_menus.rs:218",
+    "definedIn": "src/ui/library/context_menus.rs:220",
     "plural": false,
     "description": null
   },
   "SHOW_IN_FINDER": {
     "context": "context_menus.rs",
-    "definedIn": "src/ui/library/context_menus.rs:214",
+    "definedIn": "src/ui/library/context_menus.rs:216",
     "plural": false,
     "description": null
   },
@@ -1645,19 +1729,19 @@
   },
   "STOP_AFTER_CURRENT_TOOLTIP": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:723",
+    "definedIn": "src/ui/controls.rs:731",
     "plural": false,
     "description": null
   },
   "STOP_REPEATING": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:804",
+    "definedIn": "src/ui/controls.rs:812",
     "plural": false,
     "description": null
   },
   "STOP_SHUFFLING": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:646",
+    "definedIn": "src/ui/controls.rs:654",
     "plural": false,
     "description": null
   },
@@ -1759,19 +1843,19 @@
   },
   "UNKNOWN_ARTIST": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:455",
+    "definedIn": "src/ui/controls.rs:458",
     "plural": false,
     "description": null
   },
   "UNKNOWN_TRACK": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:441",
+    "definedIn": "src/ui/controls.rs:444",
     "plural": false,
     "description": null
   },
   "UNLIKE": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:484",
+    "definedIn": "src/ui/controls.rs:487",
     "plural": false,
     "description": null
   },
@@ -1783,7 +1867,7 @@
   },
   "UNMUTE": {
     "context": "controls.rs",
-    "definedIn": "src/ui/controls.rs:1103",
+    "definedIn": "src/ui/controls.rs:1111",
     "plural": false,
     "description": null
   },

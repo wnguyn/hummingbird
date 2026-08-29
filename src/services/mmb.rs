@@ -3,10 +3,16 @@ pub mod discord;
 pub mod lastfm;
 #[cfg(feature = "libre-services")]
 pub mod listenbrainz;
+#[cfg(feature = "libre-services")]
+pub mod subsonic;
 
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
-use crate::{media::metadata::Metadata, playback::thread::PlaybackState};
+use crate::{
+    media::metadata::Metadata,
+    playback::thread::PlaybackState,
+    providers::PlaybackSource,
+};
 use async_trait::async_trait;
 
 /// MediaMetadataBroadcastService is a trait that can be implemented by services that wish to
@@ -25,7 +31,7 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait MediaMetadataBroadcastService {
     /// Called when a new track is played.
-    async fn new_track(&mut self, file_path: PathBuf);
+    async fn new_track(&mut self, source: PlaybackSource);
     /// Called when new metadata is recieved from the codec.
     async fn metadata_recieved(&mut self, info: Arc<Metadata>);
     /// Called when the playback state changes. This includes pausing, unpausing, and stopping.

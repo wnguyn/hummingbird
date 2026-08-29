@@ -1,4 +1,3 @@
-use std::path::Path;
 
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use tracing::{error, info, trace_span, warn};
@@ -21,6 +20,7 @@ use crate::{
         events::PlaybackEvent,
         thread::media_controller::CompleteMetadata,
     },
+    providers::PlaybackSource,
     settings::{equalizer::EqualizerSettings, playback::PlaybackSettings},
 };
 
@@ -166,10 +166,10 @@ impl AudioEngine {
 
     pub fn open(
         &mut self,
-        path: &Path,
+        source: &PlaybackSource,
         preserve_resampler: bool,
     ) -> Result<OpenInfo, PlaybackStartError> {
-        info!("AudioEngine: Opening track '{}'", path.display());
+        info!("AudioEngine: Opening track '{}'", source);
 
         self.drain = DrainState::Inactive;
         self.rebuild_attempts = 0;
@@ -199,7 +199,7 @@ impl AudioEngine {
         self.pipeline = None;
         self.mixer = None;
 
-        let media_info = self.media.open(path)?;
+        let media_info = self.media.open(source)?;
 
         let device_recreated = if recreation_required {
             if let Err(e) = self.device.recreate_stream(true, None) {
@@ -440,9 +440,9 @@ impl AudioEngine {
         self.media.position_ms().ok()
     }
 
-    /// Get the currently loaded track path, if any.
-    pub fn current_path(&self) -> Option<&Path> {
-        self.media.current_path()
+    /// Get the currently loaded track source, if any.
+    pub fn current_source(&self) -> Option<&PlaybackSource> {
+        self.media.current_source()
     }
 
     /// Check for metadata updates and return them if available.

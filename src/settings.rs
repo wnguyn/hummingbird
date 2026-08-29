@@ -32,10 +32,10 @@ pub struct Settings {
     pub interface: interface::InterfaceSettings,
     #[serde(default)]
     pub services: services::ServicesSettings,
-    // include update settings even when the feature is disabled to avoid screwing up user's
-    // settings files if they switch to/from an official build later
+    #[cfg(feature = "libre-services")]
     #[serde(default)]
-    pub update: update::UpdateSettings,
+    pub opensubsonic: crate::providers::opensubsonic::OpenSubsonicSettings,
+    // include update settings even when the feature is disabled to avoid screwing up user's
 }
 
 fn has_stored_theme_setting(value: &serde_json::Value) -> bool {

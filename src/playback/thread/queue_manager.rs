@@ -1,7 +1,6 @@
 use std::{
     collections::VecDeque,
     mem::take,
-    path::PathBuf,
     sync::{Arc, RwLock},
 };
 
@@ -10,6 +9,7 @@ use smallvec::{SmallVec, smallvec};
 
 use crate::{
     playback::{events::RepeatState, queue::QueueItemData, session_storage::PlaybackSessionData},
+    providers::PlaybackSource,
     settings::playback::PlaybackSettings,
 };
 
@@ -30,11 +30,11 @@ pub enum QueueNavigationResult {
     /// The queue position changed.
     Changed {
         index: usize,
-        path: PathBuf,
+        source: PlaybackSource,
         reshuffled: Reshuffled,
     },
     /// The current track should repeat (RepeatOne mode).
-    Unchanged { path: PathBuf },
+    Unchanged { source: PlaybackSource },
     /// End of queue reached.
     EndOfQueue,
 }
@@ -45,8 +45,8 @@ pub enum DequeueResult {
     Removed { new_position: usize },
     /// The currently playing item was removed.
     RemovedCurrent {
-        /// The path of the next track to play, if any.
-        new_path: Option<PathBuf>,
+        /// The source of the next track to play, if any.
+        new_source: Option<PlaybackSource>,
     },
     /// Nothing changed (index out of bounds).
     Unchanged,
@@ -57,7 +57,7 @@ pub enum DequeueManyResult {
     /// Items were removed, queue position adjusted.
     Removed { new_position: usize },
     /// The currently playing item was removed.
-    RemovedCurrent { new_path: Option<PathBuf> },
+    RemovedCurrent { new_source: Option<PlaybackSource> },
     /// Nothing changed (indices empty or all out of bounds).
     Unchanged,
 }
@@ -111,7 +111,7 @@ pub enum ReplaceResult {
 
 #[derive(Debug, Clone)]
 pub enum JumpResult {
-    Jumped { path: PathBuf },
+    Jumped { source: PlaybackSource },
     OutOfBounds,
 }
 
@@ -170,7 +170,7 @@ pub enum UndoResult {
     /// The last action was undone successfully. Contains the current index and path.
     Ok {
         current_idx: usize,
-        current_path: PathBuf,
+        current_source: PlaybackSource,
         shuffle: bool,
     },
     /// The last action was undone successfully, but no current track is selected.
@@ -233,7 +233,7 @@ impl QueueManager {
         {
             UndoResult::Ok {
                 current_idx,
-                current_path: queue[current_idx].get_path().clone(),
+                current_source: queue[current_idx].get_source().clone(),
                 shuffle,
             }
         } else {
@@ -253,7 +253,7 @@ impl QueueManager {
     }
 
     fn item_is_playable(item: &QueueItemData) -> bool {
-        item.get_path().exists()
+        item.get_source().is_playable()
     }
 
     fn first_playable_index(queue: &[QueueItemData]) -> Option<usize> {
@@ -551,7 +551,7 @@ impl QueueManager {
                 && Self::item_is_playable(path)
             {
                 return QueueNavigationResult::Unchanged {
-                    path: path.get_path().clone(),
+                    source: path.get_source().clone(),
                 };
             }
 
@@ -559,7 +559,7 @@ impl QueueManager {
                 self.queue_next = index + 1;
                 QueueNavigationResult::Changed {
                     index,
-                    path: queue[index].get_path().clone(),
+                    source: queue[index].get_source().clone(),
                     reshuffled: Reshuffled::NotReshuffled,
                 }
             } else if self.repeat == RepeatState::Repeating {
@@ -570,7 +570,7 @@ impl QueueManager {
                     self.queue_next = index + 1;
                     QueueNavigationResult::Changed {
                         index,
-                        path: queue[index].get_path().clone(),
+                        source: queue[index].get_source().clone(),
                         reshuffled: if self.shuffle {
                             Reshuffled::Reshuffled
                         } else {
@@ -607,7 +607,7 @@ impl QueueManager {
                 self.queue_next = index + 1;
                 QueueNavigationResult::Changed {
                     index,
-                    path: queue[index].get_path().clone(),
+                    source: queue[index].get_source().clone(),
                     reshuffled: Reshuffled::NotReshuffled,
                 }
             } else if self.repeat == RepeatState::Repeating
@@ -622,7 +622,7 @@ impl QueueManager {
                 self.queue_next = index + 1;
                 QueueNavigationResult::Changed {
                     index,
-                    path: queue[index].get_path().clone(),
+                    source: queue[index].get_source().clone(),
                     reshuffled: if self.shuffle {
                         Reshuffled::Reshuffled
                     } else {
@@ -650,11 +650,11 @@ impl QueueManager {
         let queue = self.queue.read().expect("poisoned queue lock");
 
         if index < queue.len() && Self::item_is_playable(&queue[index]) {
-            let path = queue[index].get_path().clone();
+            let source = queue[index].get_source().clone();
             drop(queue);
             self.queue_next = index + 1;
             self.persist_session_state();
-            JumpResult::Jumped { path }
+            JumpResult::Jumped { source }
         } else {
             JumpResult::OutOfBounds
         }
@@ -871,10 +871,10 @@ impl QueueManager {
         let current = self.queue_next.saturating_sub(1);
 
         let res = if index == current {
-            let new_path = Self::next_playable_from(&queue, current)
+            let new_source = Self::next_playable_from(&queue, current)
                 .and_then(|idx| queue.get(idx))
-                .map(|v| v.get_path().clone());
-            DequeueResult::RemovedCurrent { new_path }
+                .map(|v| v.get_source().clone());
+            DequeueResult::RemovedCurrent { new_source }
         } else if index < current {
             self.queue_next -= 1;
             DequeueResult::Removed {
@@ -941,10 +941,10 @@ impl QueueManager {
 
         let res = if removed_current {
             let current = current.expect("removed_current implies current is Some");
-            let new_path = Self::next_playable_from(&queue, current - items_before_current)
+            let new_source = Self::next_playable_from(&queue, current - items_before_current)
                 .and_then(|idx| queue.get(idx))
-                .map(|v| v.get_path().clone());
-            DequeueManyResult::RemovedCurrent { new_path }
+                .map(|v| v.get_source().clone());
+            DequeueManyResult::RemovedCurrent { new_source }
         } else if self.queue_next > 0 {
             self.queue_next -= items_before_current;
             DequeueManyResult::Removed {
@@ -1334,7 +1334,7 @@ mod tests {
         serde_json::from_value(json!({
             "db_id": id,
             "db_album_id": id / 10,
-            "path": format!("/tmp/hummingbird-undo-{id}.flac"),
+            "source": { "Local": format!("/tmp/hummingbird-undo-{id}.flac") },
         }))
         .expect("valid queue item")
     }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use cntp_i18n::{tr, trn};
 use gpui::{
-    App, AppContext, Context, Entity, IntoElement, ParentElement, Pixels, Render,
+    AnyElement, App, AppContext, Context, Entity, IntoElement, ParentElement, Pixels, Render,
     StatefulInteractiveElement, Styled, Window, div, prelude::FluentBuilder, px,
 };
 
@@ -19,7 +19,7 @@ use crate::{
     library::{db::LibraryAccess, types::TrackStats},
     ui::{
         components::{
-            icons::{DISC, SEARCH, USERS},
+            icons::{DISC, SEARCH, USERS, WORLD_CHECK},
             nav_button::nav_button,
             resizable::{ResizeEdge, resizable},
             sidebar::{sidebar, sidebar_item, sidebar_separator},
@@ -122,6 +122,43 @@ impl Render for Sidebar {
                 ),
         );
 
+        #[cfg(feature = "libre-services")]
+        let server_entries: Vec<AnyElement> = {
+            let settings = cx.global::<SettingsGlobal>().model.read(cx);
+            let nav_model = self.nav_model.clone();
+            settings
+                .opensubsonic
+                .servers
+                .iter()
+                .map(|server| {
+                    let server_id = server.id.clone();
+                    let name = server.name.clone();
+                    sidebar_item(format!("server-{server_id}"))
+                        .icon(WORLD_CHECK)
+                        .when(!collapsed, |this| this.child(name.clone()))
+                        .when(collapsed, |this| this.collapsed().collapsed_label(name.clone()))
+                        .when(
+                            matches!(
+                                &sidebar_view,
+                                ViewSwitchMessage::Remote(id) if id == &server_id
+                            ),
+                            |this| this.active(),
+                        )
+                        .on_click({
+                            let nav_model = nav_model.clone();
+                            move |_, _, cx| {
+                                nav_model.update(cx, |_, cx| {
+                                    cx.emit(ViewSwitchMessage::Remote(server_id.clone()));
+                                });
+                            }
+                        })
+                        .into_any_element()
+                })
+                .collect()
+        };
+        #[cfg(not(feature = "libre-services"))]
+        let server_entries: Vec<AnyElement> = Vec::new();
+
         let sidebar_content = sidebar()
             .width(if collapsed {
                 COLLAPSED_SIDEBAR_WIDTH
@@ -153,7 +190,7 @@ impl Render for Sidebar {
                     }))
                     .when(
                         matches!(
-                            sidebar_view,
+                            &sidebar_view,
                             ViewSwitchMessage::Albums | ViewSwitchMessage::Release(_, _)
                         ),
                         |this| this.active(),
@@ -173,7 +210,7 @@ impl Render for Sidebar {
                     }))
                     .when(
                         matches!(
-                            sidebar_view,
+                            &sidebar_view,
                             ViewSwitchMessage::Artists | ViewSwitchMessage::Artist(_)
                         ),
                         |this| this.active(),
@@ -191,7 +228,7 @@ impl Render for Sidebar {
                             cx.emit(ViewSwitchMessage::Tracks);
                         });
                     }))
-                    .when(matches!(sidebar_view, ViewSwitchMessage::Tracks), |this| {
+                    .when(matches!(&sidebar_view, ViewSwitchMessage::Tracks), |this| {
                         this.active()
                     }),
             )
@@ -207,12 +244,13 @@ impl Render for Sidebar {
                             cx.emit(ViewSwitchMessage::Files);
                         });
                     }))
-                    .when(matches!(sidebar_view, ViewSwitchMessage::Files), |this| {
+                    .when(matches!(&sidebar_view, ViewSwitchMessage::Files), |this| {
                         this.active()
                     }),
             )
             .child(sidebar_separator())
             .child(self.playlists.clone())
+            .children(server_entries)
             .child(
                 div()
                     .mt_auto()

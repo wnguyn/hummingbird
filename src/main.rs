@@ -21,6 +21,7 @@ mod library;
 mod logging;
 mod media;
 mod paths;
+mod providers;
 mod playback;
 mod power;
 mod services;

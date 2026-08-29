@@ -1,7 +1,4 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, LazyLock},
-};
+use std::sync::{Arc, LazyLock};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -10,7 +7,11 @@ use gpui::SharedString;
 use tracing::{debug, warn};
 use types::Session;
 
-use crate::{media::metadata::Metadata, playback::thread::PlaybackState};
+use crate::{
+    media::metadata::Metadata,
+    playback::thread::PlaybackState,
+    providers::PlaybackSource,
+};
 
 use super::MediaMetadataBroadcastService;
 
@@ -87,7 +88,7 @@ impl LastFM {
 
 #[async_trait]
 impl MediaMetadataBroadcastService for LastFM {
-    async fn new_track(&mut self, _: PathBuf) {
+    async fn new_track(&mut self, _: PlaybackSource) {
         if !self.enabled {
             return;
         }

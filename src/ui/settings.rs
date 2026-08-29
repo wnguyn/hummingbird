@@ -6,6 +6,8 @@ pub mod lastfm;
 mod library;
 #[cfg(feature = "libre-services")]
 pub mod listenbrainz;
+#[cfg(feature = "libre-services")]
+mod remote_servers;
 mod playback;
 mod services;
 #[cfg(feature = "update")]
@@ -23,7 +25,7 @@ use crate::{
     settings::{SettingsGlobal, storage::DEFAULT_SIDEBAR_WIDTH},
     ui::{
         components::{
-            icons::{ACCESS_POINT, ADJUSTMENTS, BOOKS, PLAY, WORLD},
+            icons::{ACCESS_POINT, ADJUSTMENTS, BOOKS, PLAY, WORLD, WORLD_CHECK},
             scrollbar::{ScrollableHandle, floating_scrollbar},
             sidebar::{sidebar, sidebar_item},
             window_chrome::window_chrome,
@@ -32,6 +34,8 @@ use crate::{
         settings::{
             equalizer::EqualizerSettings, interface::InterfaceSettings, library::LibrarySettings,
             playback::PlaybackSettings, services::ServicesSettings,
+            #[cfg(feature = "libre-services")]
+            remote_servers::RemoteServersSettings,
         },
         theme::Theme,
     },
@@ -126,6 +130,8 @@ pub enum SettingsSectionKind {
     Playback,
     Equalizer,
     Services,
+    #[cfg(feature = "libre-services")]
+    RemoteServers,
     #[cfg(feature = "update")]
     Update,
 }
@@ -138,6 +144,8 @@ impl SettingsSectionKind {
             Self::Playback => "playback",
             Self::Equalizer => "equalizer",
             Self::Services => "services",
+            #[cfg(feature = "libre-services")]
+            Self::RemoteServers => "remote-servers",
             #[cfg(feature = "update")]
             Self::Update => "update",
         }
@@ -150,6 +158,8 @@ impl SettingsSectionKind {
             Self::Playback => PLAY,
             Self::Equalizer => ADJUSTMENTS,
             Self::Services => ACCESS_POINT,
+            #[cfg(feature = "libre-services")]
+            Self::RemoteServers => WORLD_CHECK,
             #[cfg(feature = "update")]
             Self::Update => super::components::icons::UPDATE,
         }
@@ -162,6 +172,8 @@ impl SettingsSectionKind {
             Self::Playback => tr!("PLAYBACK", "Playback").into(),
             Self::Equalizer => tr!("EQUALIZER", "Equalizer").into(),
             Self::Services => tr!("SERVICES", "Services").into(),
+            #[cfg(feature = "libre-services")]
+            Self::RemoteServers => tr!("REMOTE_SERVERS", "Remote Servers").into(),
             #[cfg(feature = "update")]
             Self::Update => tr!("UPDATE", "Update").into(),
         }
@@ -180,6 +192,8 @@ enum SettingsSection {
     Playback(Entity<PlaybackSettings>),
     Equalizer(Entity<EqualizerSettings>),
     Services(Entity<ServicesSettings>),
+    #[cfg(feature = "libre-services")]
+    RemoteServers(Entity<RemoteServersSettings>),
     #[cfg(feature = "update")]
     Update(Entity<UpdateSettings>),
 }
@@ -192,6 +206,8 @@ impl SettingsSection {
             SettingsSectionKind::Playback => Self::Playback(PlaybackSettings::new(cx)),
             SettingsSectionKind::Equalizer => Self::Equalizer(EqualizerSettings::new(cx)),
             SettingsSectionKind::Services => Self::Services(ServicesSettings::new(cx)),
+            #[cfg(feature = "libre-services")]
+            SettingsSectionKind::RemoteServers => Self::RemoteServers(RemoteServersSettings::new(cx)),
             #[cfg(feature = "update")]
             SettingsSectionKind::Update => Self::Update(UpdateSettings::new(cx)),
         }
@@ -204,6 +220,8 @@ impl SettingsSection {
             Self::Playback(_) => SettingsSectionKind::Playback,
             Self::Equalizer(_) => SettingsSectionKind::Equalizer,
             Self::Services(_) => SettingsSectionKind::Services,
+            #[cfg(feature = "libre-services")]
+            Self::RemoteServers(_) => SettingsSectionKind::RemoteServers,
             #[cfg(feature = "update")]
             Self::Update(_) => SettingsSectionKind::Update,
         }
@@ -216,6 +234,8 @@ impl SettingsSection {
             Self::Playback(playback) => playback.clone().into_any_element(),
             Self::Equalizer(equalizer) => equalizer.clone().into_any_element(),
             Self::Services(services) => services.clone().into_any_element(),
+            #[cfg(feature = "libre-services")]
+            Self::RemoteServers(servers) => servers.clone().into_any_element(),
             #[cfg(feature = "update")]
             Self::Update(update) => update.clone().into_any_element(),
         }
@@ -344,6 +364,10 @@ impl Render for SettingsWindow {
             .child(self.render_section_item(SettingsSectionKind::Playback, cx))
             .child(self.render_section_item(SettingsSectionKind::Equalizer, cx))
             .child(self.render_section_item(SettingsSectionKind::Services, cx));
+
+        #[cfg(feature = "libre-services")]
+        let sidebar =
+            sidebar.child(self.render_section_item(SettingsSectionKind::RemoteServers, cx));
 
         #[cfg(feature = "update")]
         let sidebar = sidebar.child(self.render_section_item(SettingsSectionKind::Update, cx));

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
 
 use tracing::info;
 
@@ -9,11 +9,12 @@ use crate::{
             ChannelRetrievalError, FrameDurationError, PlaybackReadError, PlaybackStartError,
             SeekError, TrackDurationError,
         },
-        lookup_table::try_open_media,
+        lookup_table::{try_open_media, try_open_media_source},
         metadata::Metadata,
         pipeline::{ChannelProducers, DecodeResult},
         traits::{MediaProviderFeatures, MediaStream},
     },
+    providers::PlaybackSource,
 };
 
 pub struct MediaInfo {
@@ -29,17 +30,16 @@ pub struct CompleteMetadata {
 /// Controller for media stream management.
 ///
 /// This component handles all interactions with media providers and streams,
-/// including opening/closing files, decoding audio, and retrieving metadata.
 pub struct MediaController {
     media_stream: Option<Box<dyn MediaStream>>,
-    current_path: Option<PathBuf>,
+    current_source: Option<PlaybackSource>,
 }
 
 impl MediaController {
     pub fn new() -> Self {
         Self {
             media_stream: None,
-            current_path: None,
+            current_source: None,
         }
     }
 
@@ -47,30 +47,54 @@ impl MediaController {
     pub fn has_stream(&self) -> bool {
         self.media_stream.is_some()
     }
-
-    /// Open a media file and prepare it for playback.
+    /// Open a media source (local file or remote stream) and prepare it for playback.
     ///
-    /// Returns information about the opened media file that can be used
-    /// to configure the audio pipeline and device.
-    pub fn open(&mut self, path: &Path) -> Result<MediaInfo, PlaybackStartError> {
-        info!("Opening track '{}'", path.display());
+    /// Returns information about the opened media that can be used to
+    /// configure the audio pipeline and device.
+    pub fn open(&mut self, source: &PlaybackSource) -> Result<MediaInfo, PlaybackStartError> {
+        info!("Opening track '{}'", source);
 
         // Close any existing stream
         self.close();
 
-        let src = try_open_media(path, MediaProviderFeatures::PROVIDES_DECODER);
-
-        if let Err(e) = src {
-            return Err(PlaybackStartError::MediaError(format!(
-                "Unable to open media: {}",
-                e
-            )));
-        }
-
-        let Some(mut media_stream) = src.unwrap() else {
-            return Err(PlaybackStartError::MediaError(
-                "No media provider found".to_string(),
-            ));
+        let mut media_stream = match source {
+            PlaybackSource::Local(path) => {
+                let src = try_open_media(path, MediaProviderFeatures::PROVIDES_DECODER);
+                match src {
+                    Ok(Some(stream)) => stream,
+                    Ok(None) => {
+                        return Err(PlaybackStartError::MediaError(
+                            "No media provider found".to_string(),
+                        ))
+                    }
+                    Err(e) => {
+                        return Err(PlaybackStartError::MediaError(format!(
+                            "Unable to open media: {}",
+                            e
+                        )))
+                    }
+                }
+            }
+            PlaybackSource::Subsonic(track) => {
+                let stream = crate::providers::open_subsonic_stream(track)
+                    .map_err(PlaybackStartError::MediaError)?;
+                let ext = track.suffix.as_deref().map(OsStr::new);
+                match try_open_media_source(stream, ext, MediaProviderFeatures::PROVIDES_DECODER) {
+                    Ok(Some(stream)) => stream,
+                    Ok(None) => {
+                        return Err(PlaybackStartError::MediaError(format!(
+                            "No decoder for remote format '{}'",
+                            track.suffix.as_deref().unwrap_or("unknown")
+                        )))
+                    }
+                    Err(e) => {
+                        return Err(PlaybackStartError::MediaError(format!(
+                            "Unable to open remote media: {}",
+                            e
+                        )))
+                    }
+                }
+            }
         };
 
         media_stream.start_playback().map_err(|e| {
@@ -84,7 +108,7 @@ impl MediaController {
         let duration_ms = media_stream.duration_ms().ok();
 
         self.media_stream = Some(media_stream);
-        self.current_path = Some(path.to_path_buf());
+        self.current_source = Some(source.clone());
 
         Ok(MediaInfo {
             channels,
@@ -99,11 +123,11 @@ impl MediaController {
             stream.close();
         }
 
-        self.current_path = None;
+        self.current_source = None;
     }
 
-    pub fn current_path(&self) -> Option<&Path> {
-        self.current_path.as_deref()
+    pub fn current_source(&self) -> Option<&PlaybackSource> {
+        self.current_source.as_ref()
     }
 
     /// Seek to the specified time in seconds.

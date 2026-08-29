@@ -1,10 +1,14 @@
 use std::fmt::Display;
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use gpui::{App, AppContext, Entity, SharedString};
-use std::path::PathBuf;
 
-use crate::{library::db::LibraryAccess, ui::data::Decode};
+use crate::{
+    library::db::LibraryAccess,
+    providers::{PlaybackSource, SubsonicTrackRef},
+    ui::data::Decode,
+};
 
 #[derive(Clone, Debug)]
 pub struct QueueItemData {
@@ -18,8 +22,8 @@ pub struct QueueItemData {
     db_id: Option<i64>,
     /// The database ID of album the item is from, if it exists.
     db_album_id: Option<i64>,
-    /// The path to the track file.
-    path: PathBuf,
+    /// Where the audio for this item lives (local file or remote server).
+    source: PlaybackSource,
 }
 
 impl serde::Serialize for QueueItemData {
@@ -31,7 +35,7 @@ impl serde::Serialize for QueueItemData {
         let mut state = serializer.serialize_struct("QueueItemData", 3)?;
         state.serialize_field("db_id", &self.db_id)?;
         state.serialize_field("db_album_id", &self.db_album_id)?;
-        state.serialize_field("path", &self.path)?;
+        state.serialize_field("source", &self.source)?;
         state.end()
     }
 }
@@ -45,7 +49,7 @@ impl<'de> serde::Deserialize<'de> for QueueItemData {
         struct QueueItemDataRaw {
             db_id: Option<i64>,
             db_album_id: Option<i64>,
-            path: PathBuf,
+            source: PlaybackSource,
         }
 
         let raw = QueueItemDataRaw::deserialize(deserializer)?;
@@ -53,14 +57,14 @@ impl<'de> serde::Deserialize<'de> for QueueItemData {
             data: Arc::new(RwLock::new(None)),
             db_id: raw.db_id,
             db_album_id: raw.db_album_id,
-            path: raw.path,
+            source: raw.source,
         })
     }
 }
 
 impl Display for QueueItemData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.path.to_str().unwrap_or("invalid path"))
+        write!(f, "{}", self.source)
     }
 }
 
@@ -84,21 +88,37 @@ pub enum DataSource {
     Metadata,
     /// The metadata was read from the library database.
     Library,
+    /// The metadata came from a remote source (e.g. an OpenSubsonic server).
+    Remote,
 }
 
 impl PartialEq for QueueItemData {
     fn eq(&self, other: &Self) -> bool {
         self.db_id == other.db_id
             && self.db_album_id == other.db_album_id
-            && self.path == other.path
+            && self.source == other.source
     }
 }
 
 impl QueueItemData {
-    /// Creates a new `QueueItemData` instance with the given information.
+    /// Creates a new local-file `QueueItemData` with the given information.
     pub fn new(cx: &mut App, path: PathBuf, db_id: Option<i64>, db_album_id: Option<i64>) -> Self {
+        Self::from_source(cx, PlaybackSource::Local(path), db_id, db_album_id)
+    }
+
+    /// Creates a new remote OpenSubsonic `QueueItemData`.
+    pub fn new_subsonic(cx: &mut App, track: SubsonicTrackRef) -> Self {
+        Self::from_source(cx, PlaybackSource::Subsonic(track), None, None)
+    }
+
+    fn from_source(
+        cx: &mut App,
+        source: PlaybackSource,
+        db_id: Option<i64>,
+        db_album_id: Option<i64>,
+    ) -> Self {
         QueueItemData {
-            path,
+            source,
             db_id,
             db_album_id,
             data: Arc::new(RwLock::new(Some(cx.new(|_| None)))),
@@ -133,7 +153,7 @@ impl QueueItemData {
             .clone();
         let track_id = self.db_id;
         let album_id = self.db_album_id;
-        let path = self.path.clone();
+        let source = self.source.clone();
         model.update(cx, move |m, cx| {
             // if we already have the data, exit the function
             if m.is_some() {
@@ -146,6 +166,17 @@ impl QueueItemData {
                 source: DataSource::Library,
                 duration: None,
             });
+
+            // Remote tracks carry their metadata with them; no DB or disk access needed.
+            if let Some(track) = source.as_subsonic() {
+                let ui = m.as_mut().unwrap();
+                ui.name = Some(track.title.clone().into());
+                ui.artist_name = track.artist.clone().map(Into::into);
+                ui.duration = track.duration.map(|d| d as i64);
+                ui.source = DataSource::Remote;
+                cx.notify();
+                return;
+            }
 
             // if the database ids are known we can get the data from the database
             if let (Some(track_id), Some(album_id)) = (track_id, album_id) {
@@ -174,7 +205,9 @@ impl QueueItemData {
 
             // vital information left blank, try retriving the metadata from disk
             // much slower, especially on windows
-            cx.read_metadata(path, cx.entity()).detach();
+            if let Some(path) = source.local_path() {
+                cx.read_metadata(path.clone(), cx.entity()).detach();
+            }
         });
 
         model
@@ -191,9 +224,9 @@ impl QueueItemData {
         }
     }
 
-    /// Returns the file path of the queue item.
-    pub fn get_path(&self) -> &PathBuf {
-        &self.path
+    /// Returns the playable source of the queue item.
+    pub fn get_source(&self) -> &PlaybackSource {
+        &self.source
     }
 
     /// Returns the album ID of the queue item, if it exists.

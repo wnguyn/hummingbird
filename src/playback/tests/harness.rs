@@ -11,6 +11,7 @@ use crate::{
         dsp::spectrum::spectrum_tap,
         thread::audio_engine::{AudioEngine, EngineCycleResult},
     },
+    providers::PlaybackSource,
     test_support::register_test_media_providers,
 };
 
@@ -58,7 +59,7 @@ pub fn engine_playing(path: &Path) -> AudioEngine {
         .set_replaygain(1.0)
         .expect("failed to set ReplayGain");
     engine
-        .open(path, false)
+        .open(&PlaybackSource::Local(path.to_path_buf()), false)
         .expect("failed to open the generated test WAV");
     engine
 }
