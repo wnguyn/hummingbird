@@ -48,7 +48,7 @@ impl Render for UpdateSettings {
             .flex()
             .flex_col()
             .gap(px(14.0))
-            .child(section_header(tr!("UPDATE")))
+            .child(section_header(tr!("UPDATE", "Update")))
             .child(
                 label(
                     "channel-selector",

@@ -9,9 +9,7 @@ pub mod subsonic;
 use std::sync::Arc;
 
 use crate::{
-    media::metadata::Metadata,
-    playback::thread::PlaybackState,
-    providers::PlaybackSource,
+    media::metadata::Metadata, playback::thread::PlaybackState, providers::PlaybackSource,
 };
 use async_trait::async_trait;
 

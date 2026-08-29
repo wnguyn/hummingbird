@@ -2,10 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{
-    client::ServerConfig,
-    register_client,
-};
+use super::{client::ServerConfig, register_client};
 
 /// The OpenSubsonic section of the user's settings file.
 ///
@@ -19,6 +16,7 @@ pub struct OpenSubsonicSettings {
 
 impl OpenSubsonicSettings {
     /// Whether a server with the given ID is configured.
+    #[allow(dead_code)]
     pub fn contains(&self, server_id: &str) -> bool {
         self.servers.iter().any(|s| s.id == server_id)
     }

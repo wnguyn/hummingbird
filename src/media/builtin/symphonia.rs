@@ -913,7 +913,9 @@ mod tests {
             .join("assets/tests/audio-fixtures")
             .join(name);
         let file = std::fs::File::open(&path).unwrap();
-        SymphoniaProvider.open(Box::new(file), path.extension()).unwrap()
+        SymphoniaProvider
+            .open(Box::new(file), path.extension())
+            .unwrap()
     }
 
     #[test]

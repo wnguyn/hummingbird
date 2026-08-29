@@ -307,11 +307,10 @@ impl MediaMetadataBroadcastService for Discord {
         self.start_time = None;
         self.last_duration = None;
         self.last_position = 0;
-        self.last_path = source.local_path().cloned().or_else(|| {
-            source
-                .as_subsonic()
-                .map(|t| PathBuf::from(t.title.clone()))
-        });
+        self.last_path = source
+            .local_path()
+            .cloned()
+            .or_else(|| source.as_subsonic().map(|t| PathBuf::from(t.title.clone())));
 
         if !self.enabled {
             return;

@@ -212,12 +212,15 @@ pub fn register_pbc_event_handlers(cx: &mut App) {
     let shuffle = playback_info.shuffling.clone();
 
     cx.observe(&track, |e, cx| {
-        if let Some(track) = e.read(cx)
-            && let Some(path) = track.get_path().cloned()
-            && let PbcHandle(tx, _) = cx.global()
-            && let Err(err) = tx.send(PbcEvent::NewFile(path))
-        {
-            error!(msg = ?err.0, "failed to send pbc event: {err}");
+        if let Some(track) = e.read(cx) {
+            let path = track
+                .get_path()
+                .cloned()
+                .unwrap_or_else(|| PathBuf::from("remote-stream"));
+            let PbcHandle(tx, _) = cx.global();
+            if let Err(err) = tx.send(PbcEvent::NewFile(path)) {
+                error!(msg = ?err.0, "failed to send pbc event: {err}");
+            }
         }
     })
     .detach();

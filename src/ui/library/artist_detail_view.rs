@@ -385,9 +385,9 @@ impl Render for ArtistDetailView {
             .read(cx)
             .clone()
             .is_some_and(|current_track| {
-                self.all_tracks
-                    .iter()
-                    .any(|track| current_track == track.location && is_track_available(track))
+                self.all_tracks.iter().any(|track| {
+                    current_track.get_path() == Some(&track.location) && is_track_available(track)
+                })
             });
         let has_available_artist_tracks = has_available_tracks(self.all_tracks.as_ref());
 
@@ -397,9 +397,9 @@ impl Render for ArtistDetailView {
             .read(cx)
             .clone()
             .is_some_and(|current_track| {
-                self.liked_tracks
-                    .iter()
-                    .any(|track| current_track == track.location && is_track_available(track))
+                self.liked_tracks.iter().any(|track| {
+                    current_track.get_path() == Some(&track.location) && is_track_available(track)
+                })
             });
         let has_available_liked_tracks = has_available_tracks(self.liked_tracks.as_ref());
 
@@ -409,9 +409,9 @@ impl Render for ArtistDetailView {
             .read(cx)
             .clone()
             .is_some_and(|current_track| {
-                self.standalone_tracks
-                    .iter()
-                    .any(|track| current_track == track.location && is_track_available(track))
+                self.standalone_tracks.iter().any(|track| {
+                    current_track.get_path() == Some(&track.location) && is_track_available(track)
+                })
             });
         let has_available_standalone_tracks = has_available_tracks(self.standalone_tracks.as_ref());
 

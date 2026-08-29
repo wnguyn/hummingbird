@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Serde models for OpenSubsonic/Subsonic JSON responses.
 //!
 //! All fields that other implementations may omit are `Option` (or defaulted),
@@ -14,6 +16,7 @@ pub struct Envelope<T> {
 
 /// Common response metadata plus the endpoint-specific payload.
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct Response<T> {
     pub status: String,
     pub version: Option<String>,
@@ -40,6 +43,13 @@ pub struct ApiError {
 #[derive(Deserialize, Default)]
 pub struct Empty {}
 
+/// Wrapper for `getArtists` response.
+#[derive(Deserialize, Default)]
+pub struct ArtistsWrapper {
+    #[serde(default)]
+    pub artists: Artists,
+}
+
 /// `getArtists` — a list of letter indices, each with its artists.
 #[derive(Deserialize, Default)]
 pub struct Artists {
@@ -47,7 +57,81 @@ pub struct Artists {
     pub index: Vec<ArtistIndex>,
 }
 
+/// Wrapper for `getArtist` response.
 #[derive(Deserialize)]
+pub struct ArtistWrapper {
+    pub artist: Artist,
+}
+
+/// Wrapper for `getAlbum` response.
+#[derive(Deserialize)]
+pub struct AlbumWrapper {
+    pub album: Album,
+}
+
+/// Wrapper for `getSong` response.
+#[derive(Deserialize)]
+pub struct SongWrapper {
+    pub song: Song,
+}
+
+/// Wrapper for `getAlbumList2` response.
+#[derive(Deserialize, Default)]
+pub struct AlbumList2Wrapper {
+    #[serde(rename = "albumList2", default)]
+    pub album_list2: AlbumList2,
+}
+
+/// Wrapper for `search3` response.
+#[derive(Deserialize, Default)]
+pub struct SearchResult3Wrapper {
+    #[serde(rename = "searchResult3", default)]
+    pub search_result3: SearchResult3,
+}
+
+/// Wrapper for `getPlaylists` response.
+#[derive(Deserialize, Default)]
+pub struct PlaylistsWrapper {
+    #[serde(default)]
+    pub playlists: Playlists,
+}
+
+/// Wrapper for `getPlaylist` response.
+#[derive(Deserialize)]
+pub struct PlaylistWrapper {
+    pub playlist: Playlist,
+}
+
+/// Wrapper for `getStarred2` response.
+#[derive(Deserialize, Default)]
+pub struct Starred2Wrapper {
+    #[serde(default)]
+    pub starred2: Starred2,
+}
+
+/// Wrapper for `getGenres` response.
+#[derive(Deserialize, Default)]
+pub struct GenresWrapper {
+    #[serde(default)]
+    pub genres: Genres,
+}
+
+/// Wrapper for `getLyricsBySongId` response.
+#[derive(Deserialize, Default)]
+pub struct LyricsListWrapper {
+    #[serde(rename = "lyricsList", default)]
+    pub lyrics_list: LyricsList,
+}
+
+/// Wrapper for `getLyrics` response.
+#[derive(Deserialize, Default)]
+pub struct LyricsWrapper {
+    #[serde(default)]
+    pub lyrics: Lyrics,
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct ArtistIndex {
     pub name: String,
     #[serde(default)]
@@ -55,7 +139,7 @@ pub struct ArtistIndex {
 }
 
 /// A full artist as returned by `getArtists`, `getArtist`, and search results.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Artist {
     pub id: String,
     pub name: String,
@@ -70,7 +154,7 @@ pub struct Artist {
 }
 
 /// A full album as returned by `getAlbum`, `getAlbumList2`, and search results.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Album {
     pub id: String,
     pub name: String,
@@ -94,7 +178,7 @@ pub struct Album {
 }
 
 /// A song/track.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Song {
     pub id: String,
     /// Album (directory) ID this song belongs to.
@@ -137,7 +221,7 @@ pub struct Song {
 }
 
 /// OpenSubsonic artist reference embedded in songs/albums.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct ArtistIdRef {
     pub id: String,
     pub name: String,
@@ -168,7 +252,7 @@ pub struct Playlists {
     pub playlist: Vec<Playlist>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Playlist {
     pub id: String,
     pub name: String,
@@ -188,6 +272,7 @@ pub struct Playlist {
 
 /// `getStarred2` results.
 #[derive(Deserialize, Default)]
+#[allow(dead_code)]
 pub struct Starred2 {
     #[serde(default)]
     pub artist: Vec<Artist>,
@@ -204,7 +289,7 @@ pub struct Genres {
     pub genre: Vec<Genre>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Genre {
     pub value: String,
     #[serde(rename = "songCount")]
@@ -220,7 +305,7 @@ pub struct OpenSubsonicExtensions {
     pub extensions: Vec<Extension>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Extension {
     pub name: String,
     #[serde(default)]
@@ -234,7 +319,7 @@ pub struct LyricsList {
     pub structured_lyrics: Vec<StructuredLyrics>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct StructuredLyrics {
     #[serde(rename = "displayArtist")]
     pub display_artist: Option<String>,
@@ -246,14 +331,14 @@ pub struct StructuredLyrics {
     pub line: Vec<LyricsLine>,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct LyricsLine {
     pub start: Option<i64>,
     pub value: Option<String>,
 }
 
 /// OpenSubsonic structured release date.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct ReleaseDate {
     pub year: i64,
     pub month: Option<i64>,
@@ -261,7 +346,7 @@ pub struct ReleaseDate {
 }
 
 /// `getLyrics` — legacy plain-text lyrics.
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct Lyrics {
     #[serde(default)]
     pub value: Option<String>,

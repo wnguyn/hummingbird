@@ -21,13 +21,12 @@ use crate::{
     ui::{
         availability::is_track_path_available,
         components::table::{Table, TableEvent, table_data::TABLE_MAX_WIDTH},
-        library::{
-            context_menus::{TrackContextMenuContext, play_from_track},
-            table_view_header::TableViewHeader,
-        },
+        library::context_menus::{TrackContextMenuContext, play_from_track},
         models::Models,
     },
 };
+
+use super::table_view_header::TableViewHeader;
 #[derive(Clone)]
 pub struct TrackView {
     table_view_header: Entity<TableViewHeader<Track, TrackColumn>>,

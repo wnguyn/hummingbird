@@ -155,8 +155,7 @@ pub fn play_from_track(cx: &mut App, track: &Track, queue_items: Vec<QueueItemDa
         item.get_source()
             .local_path()
             .is_some_and(|path| path == &track.location)
-    })
-    {
+    }) {
         playback_interface.replace_queue_with_index(queue_items, index);
     } else {
         playback_interface.replace_queue(queue_items);

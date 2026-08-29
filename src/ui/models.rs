@@ -174,7 +174,7 @@ pub struct MMBSList(pub FxHashMap<String, Arc<Mutex<dyn MediaMetadataBroadcastSe
 
 #[derive(Clone)]
 pub enum MMBSEvent {
-    NewTrack(PlaybackSource),
+    NewTrack(Box<PlaybackSource>),
     MetadataRecieved(Arc<Metadata>),
     StateChanged(PlaybackState),
     PositionChanged(u64),
@@ -460,7 +460,7 @@ pub fn build_models(
             crate::RUNTIME.spawn(async move {
                 let mut borrow = mmbs.lock().await;
                 match ev {
-                    MMBSEvent::NewTrack(source) => borrow.new_track(source),
+                    MMBSEvent::NewTrack(source) => borrow.new_track(*source),
                     MMBSEvent::MetadataRecieved(metadata) => borrow.metadata_recieved(metadata),
                     MMBSEvent::StateChanged(state) => borrow.state_changed(state),
                     MMBSEvent::PositionChanged(position) => borrow.position_changed(position),

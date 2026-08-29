@@ -297,7 +297,7 @@ impl PlaybackInterface {
                                 cx.notify()
                             });
                             mmbs_model.update(cx, |_, cx| {
-                                cx.emit(MMBSEvent::NewTrack(source));
+                                cx.emit(MMBSEvent::NewTrack(Box::new(source)));
                             });
                         }
                         PlaybackEvent::QueueUpdated => {

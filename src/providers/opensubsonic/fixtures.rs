@@ -1,9 +1,9 @@
+#![allow(dead_code)]
+
 //! Representative OpenSubsonic/Subsonic JSON response fixtures, shaped like
 //! what Navidrome emits. Used by unit tests so no real server is required.
 
-use super::models::{
-    Album, Artist, Envelope, OpenSubsonicExtensions, Playlist, SearchResult3, Song,
-};
+use super::models::{Album, Envelope, OpenSubsonicExtensions, Playlist, SearchResult3, Song};
 
 /// `ping` success envelope.
 pub const PING_OK: &str = r#"{
@@ -232,19 +232,19 @@ pub fn parse<T: serde::de::DeserializeOwned>(json: &str) -> T {
 }
 
 pub fn sample_album() -> Album {
-    parse::<super::models::Album>(GET_ALBUM)
+    parse::<super::models::AlbumWrapper>(GET_ALBUM).album
 }
 
 pub fn sample_song() -> Song {
-    parse::<Song>(GET_SONG)
+    parse::<super::models::SongWrapper>(GET_SONG).song
 }
 
 pub fn sample_playlist() -> Playlist {
-    parse::<Playlist>(GET_PLAYLIST)
+    parse::<super::models::PlaylistWrapper>(GET_PLAYLIST).playlist
 }
 
 pub fn sample_search() -> SearchResult3 {
-    parse::<SearchResult3>(SEARCH3)
+    parse::<super::models::SearchResult3Wrapper>(SEARCH3).search_result3
 }
 
 /// Parses the extensions fixture into a concrete list.

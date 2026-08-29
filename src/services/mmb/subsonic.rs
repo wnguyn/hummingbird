@@ -21,6 +21,7 @@ use super::MediaMetadataBroadcastService;
 
 pub const MMBS_KEY: &str = "subsonic";
 
+#[derive(Default)]
 pub struct SubsonicScrobbler {
     server_id: Option<String>,
     track_id: Option<String>,
@@ -30,22 +31,10 @@ pub struct SubsonicScrobbler {
     should_scrobble: bool,
 }
 
-impl Default for SubsonicScrobbler {
-    fn default() -> Self {
-        Self {
-            server_id: None,
-            track_id: None,
-            duration: 0,
-            accumulated_time: 0,
-            last_position: 0,
-            should_scrobble: false,
-        }
-    }
-}
-
 impl SubsonicScrobbler {
     async fn scrobble(&mut self) {
-        let (Some(server_id), Some(track_id)) = (self.server_id.as_deref(), self.track_id.as_deref())
+        let (Some(server_id), Some(track_id)) =
+            (self.server_id.as_deref(), self.track_id.as_deref())
         else {
             return;
         };
@@ -84,7 +73,8 @@ impl MediaMetadataBroadcastService for SubsonicScrobbler {
         self.should_scrobble = false;
 
         // Submit "now playing" to the server.
-        let (Some(server_id), Some(track_id)) = (self.server_id.as_deref(), self.track_id.as_deref())
+        let (Some(server_id), Some(track_id)) =
+            (self.server_id.as_deref(), self.track_id.as_deref())
         else {
             return;
         };

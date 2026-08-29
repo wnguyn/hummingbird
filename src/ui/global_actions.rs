@@ -71,14 +71,22 @@ pub fn register_actions(cx: &mut App) {
     debug!("actions: {:?}", cx.all_action_names());
     debug!("action available: {:?}", cx.is_action_available(&Quit));
 
-    let mut app_menu = MenuBuilder::new(tr!("APP_NAME"))
-        .add_item(menu_item(
-            tr!("ABOUT", "About Hummingbird"),
-            About,
-            MenuPlatform::All,
-        ))
-        .add_item(menu_separator(MenuPlatform::All))
-        .add_item(menu_item(tr!("SETTINGS"), Settings, MenuPlatform::All));
+    let mut app_menu = MenuBuilder::new(tr!(
+        "APP_NAME",
+        "Hummingbird",
+        #description = "Use the english name everywhere unless this is strictly disagreeable."
+    ))
+    .add_item(menu_item(
+        tr!("ABOUT", "About Hummingbird"),
+        About,
+        MenuPlatform::All,
+    ))
+    .add_item(menu_separator(MenuPlatform::All))
+    .add_item(menu_item(
+        tr!("SETTINGS", "Settings"),
+        Settings,
+        MenuPlatform::All,
+    ));
 
     #[cfg(feature = "update")]
     {
@@ -120,7 +128,7 @@ pub fn register_actions(cx: &mut App) {
         ));
 
     let mut help_menu = MenuBuilder::new(tr!("HELP", "Help")).add_item(menu_item(
-        tr!("ABOUT"),
+        tr!("ABOUT", "About Hummingbird"),
         About,
         MenuPlatform::NonMacOS,
     ));
@@ -168,9 +176,17 @@ pub fn register_actions(cx: &mut App) {
         .add_menu(app_menu)
         .add_menu(
             MenuBuilder::new(tr!("FILE", "File"))
-                .add_item(menu_item(tr!("SETTINGS"), Settings, MenuPlatform::NonMacOS))
+                .add_item(menu_item(
+                    tr!("SETTINGS", "Settings"),
+                    Settings,
+                    MenuPlatform::NonMacOS,
+                ))
                 .add_item(menu_separator(MenuPlatform::NonMacOS))
-                .add_item(menu_item(tr!("QUIT"), Quit, MenuPlatform::NonMacOS)),
+                .add_item(menu_item(
+                    tr!("QUIT", "Quit Hummingbird"),
+                    Quit,
+                    MenuPlatform::NonMacOS,
+                )),
         )
         .add_menu(MenuBuilder::new(tr!("EDIT", "Edit")).add_item(menu_item(
             tr!("UNDO_QUEUE", "Undo Last Queue Change"),
@@ -188,14 +204,10 @@ pub fn register_actions(cx: &mut App) {
                 OpenPalette,
                 MenuPlatform::All,
             ))
-            .add_item(menu_item(
-                tr!("SEARCH", "Search"),
-                Search,
-                MenuPlatform::All,
-            )),
+            .add_item(menu_item(tr!("SEARCH"), Search, MenuPlatform::All)),
         )
         .add_menu(
-            MenuBuilder::new(tr!("LIBRARY"))
+            MenuBuilder::new(tr!("LIBRARY", "Library"))
                 .add_item(menu_item(
                     tr!("LIBRARY_SHUFFLE_ALL", "Shuffle All"),
                     ShuffleAll,

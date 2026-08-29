@@ -309,9 +309,18 @@ impl Render for InfoSection {
             .as_ref()
             .map(|track| ManagedImageKey::Track(track.id))
             .or_else(|| {
-                self.current_track_source
-                    .as_ref()
-                    .and_then(|s| s.local_path().map(|p| ManagedImageKey::TrackFile(p.clone())))
+                self.current_track_source.as_ref().and_then(|s| match s {
+                    PlaybackSource::Local(p) => Some(ManagedImageKey::TrackFile(p.clone())),
+                    PlaybackSource::Subsonic(track) => {
+                        track
+                            .cover_art
+                            .as_ref()
+                            .map(|cover| ManagedImageKey::RemoteCoverArt {
+                                server_id: track.server_id.clone(),
+                                cover_art: cover.clone(),
+                            })
+                    }
+                })
             });
         let image_element_key = self.image_element_key;
         let theme = cx.global::<Theme>();
@@ -418,7 +427,7 @@ impl Render for InfoSection {
                     .when(*state != PlaybackState::Stopped, |e| {
                         let is_liked = self.is_liked;
                         let track_id = self.current_library_track.as_ref().map(|t| t.id);
-                        let has_track = track_id.is_some();
+                        let has_track = track_id.is_some() || matches!(self.current_track_source, Some(PlaybackSource::Subsonic(_)));
 
                         e.child(
                             div()
@@ -460,6 +469,7 @@ impl Render for InfoSection {
                                 ),
                         )
                         .when(has_track, |e| {
+                            let source = self.current_track_source.clone();
                             e.child(
                                 div().pb(px(6.0)).h_full().flex().ml_auto().child(
                                     div()
@@ -489,9 +499,36 @@ impl Render for InfoSection {
                                         .when(is_liked.is_none(), |this| {
                                             this.tooltip(build_tooltip(tr!("LIKE", "Like")))
                                         })
-                                        .on_click(cx.listener(move |_, _, _, cx| {
-                                            let Some(track_id) = track_id else { return };
-                                            toggle_like(track_id, cx.entity().clone(), cx);
+                                        .on_click(cx.listener(move |_this, _, _, _cx| {
+                                            if let Some(track_id) = track_id {
+                                                toggle_like(track_id, _cx.entity().clone(), _cx);
+                                            } else if let Some(PlaybackSource::Subsonic(ref _sub_track)) = source {
+                                                #[cfg(feature = "libre-services")]
+                                                {
+                                                    let now_liked = is_liked.is_some();
+                                                    let new_val = if now_liked { None } else { Some(1) };
+                                                    _this.is_liked = new_val;
+                                                    _cx.notify();
+
+                                                    let server_id = _sub_track.server_id.clone();
+                                                    let song_id = _sub_track.id.clone();
+                                                    let entity = _cx.entity().clone();
+                                                    _cx.spawn(async move |_, cx| {
+                                                        let client = crate::providers::opensubsonic::client_for(&server_id);
+                                                        let res = match client {
+                                                            Some(ref c) if now_liked => c.unstar(&song_id).await,
+                                                            Some(ref c) => c.star(&song_id).await,
+                                                            None => Err(crate::providers::opensubsonic::SubsonicError::NotConnected),
+                                                        };
+                                                        if res.is_err() {
+                                                            entity.update(cx, |this, cx| {
+                                                                this.is_liked = if now_liked { Some(1) } else { None };
+                                                                cx.notify();
+                                                            });
+                                                        }
+                                                    }).detach();
+                                                }
+                                            }
                                         })),
                                 ),
                             )
@@ -553,10 +590,22 @@ fn update_current_track_state(
                 .map(|v| !v.is_empty())
                 .unwrap_or(false)
         });
-    this.is_liked = this.current_library_track.as_ref().and_then(|track| {
+    this.is_liked = if let Some(track) = &this.current_library_track {
         cx.playlist_has_track(LIKED_SONGS_PLAYLIST_ID, track.id)
             .unwrap_or_default()
-    });
+    } else {
+        None
+    };
+    if let Some(PlaybackSource::Subsonic(ref sub_track)) = this.current_track_source {
+        if this.track_name.is_none() {
+            this.track_name = Some(sub_track.title.clone().into());
+        }
+        if this.artist_name.is_none()
+            && let Some(ref a) = sub_track.artist
+        {
+            this.artist_name = Some(a.clone().into());
+        }
+    }
     this.image_element_key = this.image_element_key.wrapping_add(1);
 }
 
@@ -711,11 +760,11 @@ impl Render for PlaybackSection {
                                     })
                                     .when(*state == PlaybackState::Playing, |div| {
                                         div.child(icon(PAUSE).size(px(16.0)))
-                                            .tooltip(build_tooltip(tr!("PAUSE")))
+                                            .tooltip(build_tooltip(tr!("PAUSE", "Pause")))
                                     })
                                     .when(*state != PlaybackState::Playing, |div| {
                                         div.child(icon(PLAY).size(px(16.0)))
-                                            .tooltip(build_tooltip(tr!("PLAY")))
+                                            .tooltip(build_tooltip(tr!("PLAY", "Play")))
                                     })
                                     .when(stop_after_current, |this| {
                                         this.child(
@@ -802,12 +851,12 @@ impl Render for PlaybackSection {
                                 })
                                 .tooltip(build_tooltip(match repeating {
                                     RepeatState::NotRepeating => {
-                                        tr!("REPEAT")
+                                        tr!("REPEAT", "Repeat")
                                     }
-                                    RepeatState::Repeating => tr!("REPEAT_ONE"),
+                                    RepeatState::Repeating => tr!("REPEAT_ONE", "Repeat One"),
                                     RepeatState::RepeatingOne => {
                                         if always_repeat {
-                                            tr!("REPEAT")
+                                            tr!("REPEAT", "Repeat")
                                         } else {
                                             tr!("STOP_REPEATING", "Stop Repeating")
                                         }
@@ -841,7 +890,7 @@ impl Render for PlaybackSection {
                                     .item(menu_item(
                                         "repeat-repeat",
                                         Some(REPEAT),
-                                        tr!("REPEAT", "Repeat"),
+                                        tr!("REPEAT"),
                                         move |_, _, cx| {
                                             cx.global::<PlaybackInterface>()
                                                 .set_repeat(RepeatState::Repeating);
@@ -850,7 +899,7 @@ impl Render for PlaybackSection {
                                     .item(menu_item(
                                         "repeat-repeat-one",
                                         Some(REPEAT_ONCE),
-                                        tr!("REPEAT_ONE", "Repeat One"),
+                                        tr!("REPEAT_ONE"),
                                         move |_, _, cx| {
                                             cx.global::<PlaybackInterface>()
                                                 .set_repeat(RepeatState::RepeatingOne);

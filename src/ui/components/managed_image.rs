@@ -91,7 +91,10 @@ pub enum ManagedImageKey {
     Album(i64),
     Track(i64),
     TrackFile(PathBuf),
-    RemoteCoverArt { server_id: String, cover_art: String },
+    RemoteCoverArt {
+        server_id: String,
+        cover_art: String,
+    },
 }
 
 impl ManagedImageKey {
@@ -146,7 +149,8 @@ impl ManagedImageKey {
                     (ManagedImageKey::Track(_), false) => {
                         include_str!("../../../queries/assets/find_track_art.sql")
                     }
-                    (ManagedImageKey::TrackFile(_), _) | (ManagedImageKey::RemoteCoverArt { .. }, _) => {
+                    (ManagedImageKey::TrackFile(_), _)
+                    | (ManagedImageKey::RemoteCoverArt { .. }, _) => {
                         unreachable!()
                     }
                 };

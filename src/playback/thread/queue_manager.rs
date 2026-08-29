@@ -40,6 +40,7 @@ pub enum QueueNavigationResult {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum DequeueResult {
     /// An item was removed, queue position adjusted.
     Removed { new_position: usize },
@@ -53,6 +54,7 @@ pub enum DequeueResult {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum DequeueManyResult {
     /// Items were removed, queue position adjusted.
     Removed { new_position: usize },
@@ -102,6 +104,7 @@ pub enum ShuffleResult {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum ReplaceResult {
     /// Queue replaced, contains the first item to play.
     Replaced { first_item: Option<QueueItemData> },
@@ -110,6 +113,7 @@ pub enum ReplaceResult {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum JumpResult {
     Jumped { source: PlaybackSource },
     OutOfBounds,
@@ -166,6 +170,7 @@ pub enum UndoAction {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum UndoResult {
     /// The last action was undone successfully. Contains the current index and path.
     Ok {

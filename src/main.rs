@@ -21,9 +21,9 @@ mod library;
 mod logging;
 mod media;
 mod paths;
-mod providers;
 mod playback;
 mod power;
+mod providers;
 mod services;
 mod settings;
 #[cfg(test)]

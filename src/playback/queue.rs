@@ -107,8 +107,9 @@ impl QueueItemData {
     }
 
     /// Creates a new remote OpenSubsonic `QueueItemData`.
+    #[allow(dead_code)]
     pub fn new_subsonic(cx: &mut App, track: SubsonicTrackRef) -> Self {
-        Self::from_source(cx, PlaybackSource::Subsonic(track), None, None)
+        Self::from_source(cx, PlaybackSource::Subsonic(Box::new(track)), None, None)
     }
 
     fn from_source(

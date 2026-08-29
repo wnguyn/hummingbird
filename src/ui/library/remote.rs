@@ -6,11 +6,12 @@
 use std::collections::HashSet;
 
 use cntp_i18n::tr;
-use gpui::{
-    App, AppContext, Context, Entity, FocusHandle, FontWeight, IntoElement, ObjectFit,
-    ParentElement, Render, SharedString, Styled, Window, div, px,
-};
 use gpui::prelude::FluentBuilder;
+use gpui::{
+    App, AppContext, Context, Entity, FocusHandle, FontWeight, InteractiveElement, IntoElement,
+    ObjectFit, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window,
+    div, px,
+};
 
 use crate::{
     playback::queue::QueueItemData,
@@ -25,7 +26,7 @@ use crate::{
     ui::{
         components::{
             button::button,
-            icons::{icon, STAR, STAR_FILLED},
+            icons::{STAR, STAR_FILLED, icon},
             managed_image::{ManagedImageKey, managed_image},
             textbox::Textbox,
         },
@@ -51,7 +52,7 @@ enum RemoteScreen {
         error: Option<SharedString>,
     },
     Album {
-        album: Album,
+        album: Box<Album>,
         error: Option<SharedString>,
     },
 }
@@ -92,7 +93,10 @@ impl RemoteLibrary {
             let result = fetch_albums(&server_id).await;
             screen.update(cx, |s, cx| {
                 *s = match result {
-                    Ok(albums) => RemoteScreen::Albums { albums, error: None },
+                    Ok(albums) => RemoteScreen::Albums {
+                        albums,
+                        error: None,
+                    },
                     Err(e) => RemoteScreen::Albums {
                         albums: Vec::new(),
                         error: Some(e.into()),
@@ -158,13 +162,22 @@ impl RemoteLibrary {
                     Ok(album) => {
                         starred.update(cx, |set, cx| {
                             set.clear();
-                            set.extend(album.song.iter().filter(|s| s.starred.is_some()).map(|s| s.id.clone()));
+                            set.extend(
+                                album
+                                    .song
+                                    .iter()
+                                    .filter(|s| s.starred.is_some())
+                                    .map(|s| s.id.clone()),
+                            );
                             cx.notify();
                         });
-                        RemoteScreen::Album { album, error: None }
+                        RemoteScreen::Album {
+                            album: Box::new(album),
+                            error: None,
+                        }
                     }
                     Err(e) => RemoteScreen::Album {
-                        album: empty_album(album_id),
+                        album: Box::new(empty_album(album_id)),
                         error: Some(e.into()),
                     },
                 };
@@ -193,12 +206,14 @@ impl RemoteLibrary {
 
         cx.spawn(async move |cx| {
             let result = match client {
-                Some(client) if now_starred => client.unstar(&song_id).await.map_err(|e| e.to_string()),
+                Some(client) if now_starred => {
+                    client.unstar(&song_id).await.map_err(|e| e.to_string())
+                }
                 Some(client) => client.star(&song_id).await.map_err(|e| e.to_string()),
                 None => Err("server not connected".to_string()),
             };
 
-            if let Err(_) = result {
+            if result.is_err() {
                 // Roll back on failure.
                 starred.update(cx, |set, cx| {
                     if now_starred {
@@ -285,36 +300,28 @@ impl Render for RemoteLibrary {
         let header = div()
             .flex()
             .gap(px(8.0))
-            .child(
-                button()
-                    .id("remote-albums")
-                    .child(tr!("ALBUMS", "Albums"))
-                    .on_click({
-                        let this = cx.entity();
-                        move |_, _, cx| this.update(cx, |this, cx| this.load_albums(cx))
-                    }),
-            )
+            .child(button().id("remote-albums").child(tr!("ALBUMS")).on_click({
+                let this = cx.entity();
+                move |_, _, cx| this.update(cx, |this, cx| this.load_albums(cx))
+            }))
             .child(
                 button()
                     .id("remote-artists")
-                    .child(tr!("ARTISTS", "Artists"))
+                    .child(tr!("ARTISTS"))
                     .on_click({
                         let this = cx.entity();
                         move |_, _, cx| this.update(cx, |this, cx| this.load_artists(cx))
                     }),
             )
-            .child(
-                button()
-                    .id("remote-search")
-                    .child(tr!("SEARCH", "Search"))
-                    .on_click({
-                        let this = cx.entity();
-                        move |_, _, cx| this.update(cx, |this, cx| {
-                            let query = this.search_input.read(cx).value(cx);
-                            this.search(cx, query);
-                        })
-                    }),
-            );
+            .child(button().id("remote-search").child(tr!("SEARCH")).on_click({
+                let this = cx.entity();
+                move |_, _, cx| {
+                    this.update(cx, |this, cx| {
+                        let query = this.search_input.read(cx).value(cx);
+                        this.search(cx, query);
+                    })
+                }
+            }));
 
         let body: gpui::AnyElement = match screen {
             RemoteScreen::Loading => div()
@@ -322,22 +329,33 @@ impl Render for RemoteLibrary {
                 .text_color(theme.text_secondary)
                 .child(tr!("LOADING", "Loading…"))
                 .into_any_element(),
-            RemoteScreen::Albums { albums, error } => {
+            RemoteScreen::Albums {
+                ref albums,
+                ref error,
+            } => {
                 let mut list = div().flex().flex_col().gap(px(4.0));
                 if let Some(error) = error {
-                    list = list.child(div().text_sm().text_color(theme.status_error).child(error));
+                    list = list.child(
+                        div()
+                            .text_sm()
+                            .text_color(theme.status_error)
+                            .child(error.clone()),
+                    );
                 }
                 for album in albums {
                     let server_id = server_id.clone();
+                    let cover_key =
+                        album
+                            .cover_art
+                            .clone()
+                            .map(|cover| ManagedImageKey::RemoteCoverArt {
+                                server_id: server_id.clone(),
+                                cover_art: cover,
+                            });
                     let album_id = album.id.clone();
-                    let cover_key = album.cover_art.clone().map(|cover| {
-                        ManagedImageKey::RemoteCoverArt {
-                            server_id: server_id.clone(),
-                            cover_art: cover,
-                        }
-                    });
                     list = list.child(
                         div()
+                            .id(format!("remote-album-{}", album.id))
                             .flex()
                             .gap(px(8.0))
                             .p(px(4.0))
@@ -345,7 +363,7 @@ impl Render for RemoteLibrary {
                             .hover(|this| this.bg(theme.list_item_hover))
                             .when_some(cover_key, |this, key| {
                                 this.child(
-                                    managed_image((album_id.clone(), "remote-album-art"), key)
+                                    managed_image("remote-album-art", key)
                                         .w(px(36.0))
                                         .h(px(36.0))
                                         .object_fit(ObjectFit::Fill)
@@ -369,17 +387,27 @@ impl Render for RemoteLibrary {
                             .on_click({
                                 let this = cx.entity();
                                 move |_, _, cx| {
-                                    this.update(cx, |this, cx| this.open_album(cx, album_id.clone()))
+                                    this.update(cx, |this, cx| {
+                                        this.open_album(cx, album_id.clone())
+                                    })
                                 }
                             }),
                     );
                 }
                 list.into_any_element()
             }
-            RemoteScreen::Artists { artists, error } => {
+            RemoteScreen::Artists {
+                ref artists,
+                ref error,
+            } => {
                 let mut list = div().flex().flex_col().gap(px(2.0));
                 if let Some(error) = error {
-                    list = list.child(div().text_sm().text_color(theme.status_error).child(error));
+                    list = list.child(
+                        div()
+                            .text_sm()
+                            .text_color(theme.status_error)
+                            .child(error.clone()),
+                    );
                 }
                 for artist in artists {
                     list = list.child(
@@ -392,10 +420,18 @@ impl Render for RemoteLibrary {
                 }
                 list.into_any_element()
             }
-            RemoteScreen::Search { songs, error } => {
+            RemoteScreen::Search {
+                ref songs,
+                ref error,
+            } => {
                 let mut list = div().flex().flex_col().gap(px(2.0));
                 if let Some(error) = error {
-                    list = list.child(div().text_sm().text_color(theme.status_error).child(error));
+                    list = list.child(
+                        div()
+                            .text_sm()
+                            .text_color(theme.status_error)
+                            .child(error.clone()),
+                    );
                 }
                 for song in songs {
                     let server_id = server_id.clone();
@@ -403,23 +439,18 @@ impl Render for RemoteLibrary {
                     let artist = song.artist.clone();
                     list = list.child(
                         div()
+                            .id(format!("remote-song-search-{}", song.id))
                             .flex()
                             .gap(px(8.0))
                             .p(px(4.0))
                             .cursor_pointer()
                             .hover(|this| this.bg(theme.list_item_hover))
                             .child(div().flex().flex_col().flex_grow(1.0).child(
-                                div()
-                                    .text_sm()
-                                    .child(title)
-                                    .when_some(artist, |this, a| {
-                                        this.child(
-                                            div()
-                                                .text_xs()
-                                                .text_color(theme.text_secondary)
-                                                .child(a),
-                                        )
-                                    }),
+                                div().text_sm().child(title).when_some(artist, |this, a| {
+                                    this.child(
+                                        div().text_xs().text_color(theme.text_secondary).child(a),
+                                    )
+                                }),
                             ))
                             .on_click({
                                 let server_id = server_id.clone();
@@ -430,7 +461,10 @@ impl Render for RemoteLibrary {
                 }
                 list.into_any_element()
             }
-            RemoteScreen::Album { album, error } => {
+            RemoteScreen::Album {
+                ref album,
+                ref error,
+            } => {
                 let mut list = div().flex().flex_col().gap(px(2.0));
                 list = list.child(
                     div()
@@ -447,19 +481,22 @@ impl Render for RemoteLibrary {
                     );
                 }
                 if let Some(error) = error {
-                    list = list.child(div().text_sm().text_color(theme.status_error).child(error));
+                    list = list.child(
+                        div()
+                            .text_sm()
+                            .text_color(theme.status_error)
+                            .child(error.clone()),
+                    );
                 }
                 for song in &album.song {
                     let server_id = server_id.clone();
                     let title = song.title.clone();
                     let track_no = song.track;
                     let duration = song.duration;
-                    let is_starred = self
-                        .starred
-                        .read(cx)
-                        .contains(&song.id);
+                    let is_starred = self.starred.read(cx).contains(&song.id);
                     list = list.child(
                         div()
+                            .id(format!("remote-song-{}", song.id))
                             .flex()
                             .gap(px(8.0))
                             .p(px(4.0))
@@ -528,9 +565,17 @@ impl Render for RemoteLibrary {
                     .flex()
                     .w_full()
                     .child(self.search_input.clone())
-                    .when(!matches!(screen, RemoteScreen::Search { .. }), |this| this.occlude()),
+                    .when(!matches!(screen, RemoteScreen::Search { .. }), |this| {
+                        this.invisible()
+                    }),
             )
-            .child(div().flex_grow(1.0).overflow_y_scroll().child(body))
+            .child(
+                div()
+                    .id("remote-body-scroll")
+                    .overflow_y_scroll()
+                    .flex_grow(1.0)
+                    .child(body),
+            )
     }
 }
 

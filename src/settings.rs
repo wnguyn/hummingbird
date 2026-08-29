@@ -36,6 +36,8 @@ pub struct Settings {
     #[serde(default)]
     pub opensubsonic: crate::providers::opensubsonic::OpenSubsonicSettings,
     // include update settings even when the feature is disabled to avoid screwing up user's
+    #[serde(default)]
+    pub update: update::UpdateSettings,
 }
 
 fn has_stored_theme_setting(value: &serde_json::Value) -> bool {

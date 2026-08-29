@@ -29,6 +29,7 @@ pub enum SubsonicError {
     NotFound,
 
     /// The server does not implement the requested endpoint.
+    #[allow(dead_code)]
     #[error("The server does not support this feature")]
     Unsupported,
 
@@ -37,8 +38,8 @@ pub enum SubsonicError {
     NotConnected,
 }
 
-
 /// The well-known Subsonic status codes (subset used for classification).
+#[allow(dead_code)]
 pub mod codes {
     pub const GENERIC: i32 = 0;
     pub const REQUIRED_PARAMETER_MISSING: i32 = 10;

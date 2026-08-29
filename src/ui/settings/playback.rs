@@ -49,7 +49,7 @@ impl Render for PlaybackSettings {
             .flex()
             .flex_col()
             .gap(px(12.0))
-            .child(section_header(tr!("PLAYBACK")))
+            .child(section_header(tr!("PLAYBACK", "Playback")))
             .child(
                 label(
                     "playback-always-repeat",
